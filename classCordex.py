@@ -40,80 +40,98 @@ class Cordex(Indicatori):
         units = ''
         standard_name = ''
         long_name = ''
-    
-        if variabile in ('TMAX', 'TMAX_2M', 'tasmax'):
-            variabile = "TMAX_2M"
-            units = 'degK'
-            standard_name = 'air_temperature'
-            long_name = 'Daily maximum near-surface air temperature'
-            if self.modelData == "EU-CORDEX-11" or self.modelData =='CMIP6': variabile = 'tasmax'
-        elif variabile in ('T_2M', 'tas'):
-            variabile = "T_2M"
-            units = 'degK'
-            standard_name = 'air_temperature'
-            long_name = 'Daily minimum near-surface air temperature'
-            if self.modelData == "EU-CORDEX-11" or self.modelData =='CMIP6': variabile = 'tas'
-        elif variabile in ('TMIN', 'TMIN_2M', 'tasmin'):
-            variabile = "TMIN_2M"
-            units = 'degK'
-            standard_name = 'air_temperature'
-            long_name = 'Daily mean near-surface air temperature'
-            if self.modelData == "EU-CORDEX-11" or self.modelData =='CMIP6': variabile = 'tasmin'
-        elif variabile in ('TOT_PREC', 'pr'):
-            variabile = "pr"
-            units = 'mm/day'
-            standard_name = 'precipitation amount'
-            long_name = 'total precipitation amount'
-            if self.modelData == "EU-CORDEX-11" or self.modelData =='CMIP6': variabile = 'pr'
-        elif variabile in ('WIND', 'sfcWind'):
-            variabile = "WIND"
-            units = 'm/s'
-            standard_name = 'maximum daily wind speed'
-            long_name = 'maximum daily wind speed'
-            if self.modelData == "EU-CORDEX-11" or self.modelData =='CMIP6': variabile = 'sfcWind'
-        elif variabile in ('HURS', 'hurs'):
-            variabile = "HURS"
-            units = '%'
-            standard_name = 'relative_humidity'
-            long_name = 'Near-Surface Relative Humidity'
-            if self.modelData == "EU-CORDEX-11" or self.modelData =='CMIP6': variabile = 'hurs'
-        else:
-            print('Variabile non trovata ' + variabile)
-            return None
-    
+
+        match variabile:
+            case 'TMAX' | 'TMAX_2M' | 'tasmax':
+                variabile = "TMAX_2M"
+                units = 'degK'
+                standard_name = 'air_temperature'
+                long_name = 'Daily maximum near-surface air temperature'
+                if self.modelData == "EU-CORDEX-11": variabile = 'tasmax'
+            case 'T_2M' | 'tas':
+                variabile = "T_2M"
+                units = 'degK'
+                standard_name = 'air_temperature'
+                long_name = 'Daily minimum near-surface air temperature'
+                if self.modelData == "EU-CORDEX-11": variabile = 'tas'
+            case 'TMIN' | 'TMIN_2M' | 'tasmin':
+                variabile = "TMIN_2M"
+                units = 'degK'
+                standard_name = 'air_temperature'
+                long_name = 'Daily mean near-surface air temperature'
+                if self.modelData == "EU-CORDEX-11": variabile = 'tasmin'
+            case 'TOT_PREC' | 'pr':
+                variabile = "pr"
+                units = 'mm/day'
+                standard_name = 'precipitation amount'
+                long_name = 'total precipitation amount'
+                if self.modelData == "EU-CORDEX-11": variabile = 'pr'
+            case 'WIND' | 'sfcWind':
+                variabile = "WIND"
+                units = 'm/s'
+                standard_name = 'maximum daily wind speed'
+                long_name = 'maximum daily wind speed'
+                if self.modelData == "EU-CORDEX-11": variabile = 'sfcWind'
+            case 'HURS' | 'hurs':
+                variabile="HURS"
+                units= '%'
+                standard_name= 'relative_humidity'
+                long_name= 'Near-Surface Relative Humidity'
+                if self.modelData == "EU-CORDEX-11": variabile = 'hurs'
+            case _:
+                print('Variabile non trovata ' + variabile)
+
         scenario = self.scenario.replace(' ', '').replace('.', '')
-    
-        if self.modelData == "CMIP6":
-            lista_dataset = []
-            for modellist in range(1, 33):
-                modello = f'{self.path_variabili}/{variabile}_cmip6_model{modellist:02d}_{scenario.lower()}.nc'
-                if os.path.isfile(modello):
-                    lista_dataset.append(modello)
-            return lista_dataset
-    
+
+        
+
         if self.modelData == "EU-CORDEX-11":
+            
             lista_dataset = []
+            # pr_cordex_model06_rcp45.nc
             for modellist in range(1, 33):
                 modello = f'{self.path_variabili}/{variabile}_cordex_model{modellist:02d}_{scenario.lower()}.nc'
                 if os.path.isfile(modello):
+                    # dsdata = xr.open_dataset(modello)
+
+                    # # Estraggo la variabile
+                    # dsdata = dsdata[variabile]
+        
+                    # # Faccio il resample per ogni giorno
+                    # data = self.resample(dsdata, variabile)
+                    
+                    # # print(tasmax_daily_max)
+                    # # Imposto l'unità di misura
+                    # data.attrs["units"] = units
+                    # data.attrs['standard_name'] = standard_name
+                    # data.attrs['long_name'] = long_name
+                    # lista_dataset.append(data)
                     lista_dataset.append(modello)
             return lista_dataset
-    
+            
         if self.modelData == "VHR-PRO-IT":
+            # Apro il dataset
             print(f'{self.path_variabili}/{variabile}_VHR-PRO-IT_1981_2070_{scenario}.nc')
             dsdata = xr.open_dataset(f'{self.path_variabili}/{variabile}_VHR-PRO-IT_1981_2070_{scenario}.nc')
-    
+
+            # Estraggo la variabile
             dsdata = dsdata[variabile]
+
+            # Faccio il resample per ogni giorno
             data = self.resample(dsdata, variabile)
+            
+            # print(tasmax_daily_max)
+            # Imposto l'unità di misura
             data.attrs["units"] = units
             data.attrs['standard_name'] = standard_name
             data.attrs['long_name'] = long_name
-    
+            # data.attrs['cell_methods'] = 'time: maximum within days'
+
+            # return dataArray
             return data
         else:
             print(f"Modello non riconosciuto: {self.modelData}")
             return None
-
             
     def getNetcdfOpenDataset(self, modello, variabile):
         dsdata = xr.open_dataset(modello)
@@ -165,10 +183,8 @@ class Cordex(Indicatori):
             
             # Carica i dati e rinomina le coordinate
             pr_data = self.getNetcdfOpenDataset(model, variabile='pr')
-            try:
-                pr_data = pr_data.rename({'y': 'rlat', 'x': 'rlon'})
-            except: 
-                print('no')
+            pr_data = pr_data.rename({'y': 'rlat', 'x': 'rlon'})
+            
             file_indicatore_completo = f'{self.path_indicatori_cache}/{self.modelData}_{indicatore.lower()}_MODEL{modelloNumero}_{self.scenario_dir}.nc'
         else:
             pr_data = self.getNetcdfModelData(variabile='TOT_PREC')
@@ -222,14 +238,12 @@ class Cordex(Indicatori):
 
         # Calcola la media dell'ensemble
         tutti_modelli = xr.concat(lista_completa, dim='time')
-        tutti_modelli_mean = tutti_modelli.mean(dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
-        tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
-        tutti_modelli_mean = tutti_modelli_mean.assign_coords({'lon': lista_completa[0].lon, 'lat': lista_completa[0].lat})
+        tutti_modelli = tutti_modelli.mean(dim='time')
+        tutti_modelli = tutti_modelli.assign_coords({'lon': lista_completa[0].lon, 'lat': lista_completa[0].lat})
 
         # Salva il risultato finale
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
-        tutti_modelli_mean.to_netcdf(output_file, mode='w', format="NETCDF4")
+        tutti_modelli.to_netcdf(output_file, mode='w', format="NETCDF4")
         print("File salvato:", output_file)
         return model_list
     
@@ -262,17 +276,12 @@ class Cordex(Indicatori):
             # Temperatura mmassima giornaliera
             print(modellotasmax)
             tasmax = self.getNetcdfOpenDataset(modellotasmax, variabile='tasmax') 
-            try:
-                tasmax = tasmax.rename({'y': 'rlat', 'x': 'rlon'})
-            except:
-                print('no')
+            tasmax = tasmax.rename({'y': 'rlat', 'x': 'rlon'})
             # Precipitazione giornaliera
             print(model)
             rh = self.getNetcdfOpenDataset(model, variabile='hurs')
-            try:
-                rh = rh.rename({'y': 'rlat', 'x': 'rlon'})
-            except:
-                print('no')
+            rh = rh.rename({'y': 'rlat', 'x': 'rlon'})
+            
             #  Humidex
             humidex= xclim.indices.humidex(tasmax, hurs=rh)
             print(tasmax)
@@ -282,17 +291,17 @@ class Cordex(Indicatori):
             # trasformo in gradi da celsius
             humidex=humidex-273.15
             
-            if classe == 1:
-                indicatore_tot = xr.where(humidex < 20, 1, 0)
-            elif classe == 2:
-                indicatore_tot = xr.where((humidex >= 20) & (humidex < 30), 1, 0)
-            elif classe == 3:
-                indicatore_tot = xr.where((humidex >= 30) & (humidex < 40), 1, 0)
-            elif classe == 4:
-                indicatore_tot = xr.where((humidex >= 40) & (humidex < 45), 1, 0)
-            elif classe == 5:
-                indicatore_tot = xr.where(humidex >= 45, 1, 0)
-
+            match classe:
+                case 1:
+                    indicatore_tot=xr.where(humidex <20, 1, 0)
+                case 2:
+                    indicatore_tot = xr.where((humidex >= 20) & (humidex < 30), 1, 0)
+                case 3:
+                    indicatore_tot = xr.where((humidex >= 30) & (humidex < 40), 1, 0)
+                case 4:
+                    indicatore_tot = xr.where((humidex >= 40) & (humidex < 45), 1, 0)
+                case 5:
+                    indicatore_tot = xr.where(humidex >= 45, 1, 0)
 
             #indicatore_tot=xr.where(humidex >= thresh, 1, 0)
             indicatore_tot = indicatore_tot.resample(time = freq).sum(dim='time')
@@ -330,14 +339,12 @@ class Cordex(Indicatori):
         # Calcola la media dell'ensemble
         tutti_modelli = xr.concat(lista_completa, dim='time')
         #ensamble mean
-        tutti_modelli_mean = tutti_modelli.mean(dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
-        tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
+        tutti_modelli = tutti_modelli.mean(dim='time')
         
-        tutti_modelli_mean = tutti_modelli_mean.assign_coords({'lon': lista_completa[0].lon, 'lat': lista_completa[0].lat})
+        tutti_modelli = tutti_modelli.assign_coords({'lon': lista_completa[0].lon, 'lat': lista_completa[0].lat})
         # Salva il risultato finale
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
-        tutti_modelli_mean.to_netcdf(output_file, mode='w', format="NETCDF4")
+        tutti_modelli.to_netcdf(output_file, mode='w', format="NETCDF4")
         print("File salvato:", output_file)
         return tutti_modelli
 
@@ -376,10 +383,8 @@ class Cordex(Indicatori):
             
             # Carica i dati e rinomina le coordinate
             tasmax_data = self.getNetcdfOpenDataset(model, variabile)
-            try:
-                tasmax_data = tasmax_data.rename({'y': 'rlat', 'x': 'rlon'})
-            except:
-                print('no')
+            tasmax_data = tasmax_data.rename({'y': 'rlat', 'x': 'rlon'})
+            
             file_indicatore_completo = f'{self.path_indicatori_cache}/{self.modelData}_{indicatore.lower()}_MODEL{modelloNumero}_{self.scenario_dir}.nc'
         else:
             tasmax_data = self.getNetcdfModelData(variabile)
@@ -461,19 +466,17 @@ class Cordex(Indicatori):
         
         # Calcola la media dell'ensemble
         tutti_modelli = xr.concat(datasets_with_time, dim='time')
-        tutti_modelli_mean = tutti_modelli.mean(dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
-        tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
+        tutti_modelli = tutti_modelli.mean(dim='time')
 
         # Aggiunta delle coordinate geografiche
-        tutti_modelli_mean = tutti_modelli_mean.assign_coords({
+        tutti_modelli = tutti_modelli.assign_coords({
             'lon': datasets[0].lon, 
             'lat': datasets[0].lat
         })
         
         # Salva il risultato finale
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
-        tutti_modelli_mean.to_netcdf(output_file, mode='w', format="NETCDF4")
+        tutti_modelli.to_netcdf(output_file, mode='w', format="NETCDF4")
         print("File salvato:", output_file)
         return model_list
         
@@ -494,10 +497,8 @@ class Cordex(Indicatori):
             print(f"Processando modello: {modello}")
         
             sdii_data = self.getNetcdfOpenDataset(modello, variabile='pr')
-            try:
-                sdii_data = sdii_data.rename({'y': 'rlat', 'x': 'rlon'})
-            except:
-                print('no')
+            sdii_data = sdii_data.rename({'y': 'rlat', 'x': 'rlon'})
+
             # setto a 0 il rumore del modello
             sdii_data = xr.where(sdii_data < 1, 0, sdii_data)
 
@@ -522,20 +523,18 @@ class Cordex(Indicatori):
         tutti_modelli = xr.concat(datasets_with_time, dim='time')
 
         # fare la media
-        tutti_modelli_mean = tutti_modelli.mean(dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
-        tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
-        tutti_modelli_mean = tutti_modelli_mean.assign_coords({'lon': datasets_with_time[0].lon, 'lat': datasets_with_time[0].lat})
+        tutti_modelli = tutti_modelli.mean(dim='time')
+        tutti_modelli = tutti_modelli.assign_coords({'lon': datasets_with_time[0].lon, 'lat': datasets_with_time[0].lat})
 
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
-        tutti_modelli_mean.to_netcdf(output_file, mode='w', format="NETCDF4")
+        tutti_modelli.to_netcdf(output_file, mode='w', format="NETCDF4")
 
         return anomalia
     
     def su(self, thresh=25, freq='1YE', indicatore='SU'):
         self.hw(thresh=thresh, freq=freq, indicatore=indicatore, variabile='tasmax')
 
-    def pet(self, indicatore='PET_TH'):
+    def pet(self, indicatore='PET'):
         scenario = self.scenario.replace(' ', '').replace('.', '')
         model_list = self.getNetcdfModelData(variabile='tas')
         anomalie = []
@@ -559,10 +558,8 @@ class Cordex(Indicatori):
                 original_lat = des_tas.lat
                 
                 if 'y' in des_tas.dims and 'x' in des_tas.dims:
-                    try:
-                        des_tas = des_tas.rename({'y': 'rlat', 'x': 'rlon'})
-                    except:
-                        print('no')
+                    des_tas = des_tas.rename({'y': 'rlat', 'x': 'rlon'})
+                
                 pet_raw = xclim.indices.potential_evapotranspiration(
                     method='TW48', 
                     tas=des_tas
@@ -607,19 +604,16 @@ class Cordex(Indicatori):
         
         if anomalie:
             anomalie_concat = xr.concat(anomalie, dim='model')
-            tutti_modelli_mean = anomalie_concat.mean(dim='model')
-            tutti_modelli_std = anomalie_concat.std(dim='model')
-            tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
-            tutti_modelli_mean = tutti_modelli_mean.assign_coords({'lon': anomalie[0].lon, 'lat': anomalie[0].lat})
+            tutti_modelli = anomalie_concat.mean(dim='model')
+            tutti_modelli = tutti_modelli.assign_coords({'lon': anomalie[0].lon, 'lat': anomalie[0].lat})
 
             output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{scenario}.nc'
-            tutti_modelli_mean.to_netcdf(output_file, mode='w', format='NETCDF4')
-            return tutti_modelli_mean
+            tutti_modelli.to_netcdf(output_file, mode='w', format='NETCDF4')
+            return tutti_modelli
         else:
             raise ValueError("Nessun modello elaborato con successo")
-        
     
-    def prcptot(self, indicatore='PRCPTOT'):
+    def prcptot(self):
         model_list = self.getNetcdfModelData(variabile='TOT_PREC')
         anomalie = []
         lista_completa = []
@@ -633,12 +627,10 @@ class Cordex(Indicatori):
         datasets_with_time = [ds.expand_dims(time=[i]) for i, ds in enumerate(datasets)]
         tutti_modelli = xr.concat(datasets_with_time, dim='time')
         tutti_modelli = tutti_modelli.assign_coords({'lon': datasets_with_time[0].lon, 'lat': datasets_with_time[0].lat})
-        # fare la media e std
-        tutti_modelli_mean = tutti_modelli.mean(dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
-        tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
+        # fare la media
+        tutti_modelli = tutti_modelli.mean(dim='time')
         output_file = f'{self.outputPath}/{self.modelData}_prcptot_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
-        tutti_modelli_mean.to_netcdf(output_file, mode='w', format="NETCDF4")
+        tutti_modelli.to_netcdf(output_file, mode='w', format="NETCDF4")
         #return model_list
 
     def _prcptot(self, freq='YS', indicatore='PRCPTOT', model=None):
@@ -658,11 +650,8 @@ class Cordex(Indicatori):
             #print (match.group(1))
                 
             precip_data = self.getNetcdfOpenDataset(model, variabile='pr')
-            try:
-                
-                precip_data = precip_data.rename({'y': 'rlat', 'x': 'rlon'})
-            except:
-                print('no')
+
+            precip_data = precip_data.rename({'y': 'rlat', 'x': 'rlon'})
             
             file_indicatore_completo = f'{self.path_indicatori_cache}/{self.modelData}_{indicatore.lower()}_MODEL{modelloNumero}_{self.scenario_dir}.nc'
         else:
@@ -750,10 +739,8 @@ class Cordex(Indicatori):
             try:
                 # Carica i dati e rinomina le coordinate
                 data = self.getNetcdfOpenDataset(modello, variabile=variabile)
-                try:
-                    data = data.rename({'y': 'rlat', 'x': 'rlon'})
-                except:
-                    print('no')
+                data = data.rename({'y': 'rlat', 'x': 'rlon'})
+
                 if variabile=='tas' or variabile=='tasmax' or variabile=='tasmin':
                     # trasformiamo da gradi kelvin in gradi celsius
                     miomodello = data - 273.15
@@ -785,27 +772,19 @@ class Cordex(Indicatori):
         # Aggiungi dimensione temporale per l'ensemble
         datasets_with_time = [ds.expand_dims(time=[i]) for i, ds in enumerate(lista_completa)]
         
-        #Calcola la media dell'ensemble
+        # Calcola la media dell'ensemble
         tutti_modelli = xr.concat(datasets_with_time, dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
         tutti_modelli = tutti_modelli.mean(dim='time')
         
-        # tutti_modelli[f"{indicatore}_STD"] = tutti_modelli_std
-        #tutti_modelli.assign(variable_name=(['STD'],tutti_modelli_std))
         # Aggiunta delle coordinate geografiche
         tutti_modelli = tutti_modelli.assign_coords({
             'lon': lista_completa[0].lon, 
             'lat': lista_completa[0].lat
         })
-        tutti_modelli = tutti_modelli.rename(indicatore.upper())
-        ensamble=tutti_modelli.to_dataset()
-        #print(tutti_modelli)
-        ensamble[f"{indicatore.upper()}_STD"] = tutti_modelli_std
-        #print(tutti_modelli)
-        #print(tutti_modelli)
-        # rinomino la variabile con il nome indicatore
         
-        #print(ensamble)
+        # rinomino la variabile con il nome indicatore
+        ensamble = tutti_modelli.rename(indicatore.upper())
+        # print(ensamble)
         # ensamble = tutti_modelli.rename({'tasmin': indicatore})
         # ensamble = tutti_modelli.rename({'tas': indicatore})
         # ensamble = tutti_modelli.rename({'tasmax': indicatore})
@@ -813,7 +792,6 @@ class Cordex(Indicatori):
          # Salva il risultato finale
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
         ensamble.to_netcdf(output_file, mode='w', format="NETCDF4")
-        return ensamble
     
     def tx90prctile(self, indicatore='TX90prctile', freq='YS', variabile='tasmax'):
         """
@@ -858,16 +836,13 @@ class Cordex(Indicatori):
     
     def _r10(self, freq='1Y', thresh=10, indicatore='R10', modello=None):
         pr = self.getNetcdfOpenDataset(modello, 'pr')
-        try:
-            pr = pr.rename({'y': 'rlat', 'x': 'rlon'})
-        except:
-            print('no')
+        pr = pr.rename({'y': 'rlat', 'x': 'rlon'})
         #elimino il rumore
         miomodello = xr.where(pr < 1, 0, pr)
         # assegno l'unità di misura
         miomodello = miomodello.assign_attrs(units='mm/day')
 
-        indicatore_tot = xr.where(miomodello > thresh, 1, 0)
+        indicatore_tot = xclim.indices.max_n_day_precipitation_amount(miomodello, window=thresh, freq=freq)
 
         indicatore_tot = indicatore_tot.resample(time=freq).sum(dim='time')
 
@@ -886,9 +861,8 @@ class Cordex(Indicatori):
 
     def r10(self, freq='1Y', thresh=10, indicatore='R10'):
         model_list = self.getNetcdfModelData('pr')
-        
         lista_completa = []
-
+        
         for modello in model_list:
             print(f"Processando modello: {modello}")
             # calcolo l'indicatore per il modello
@@ -900,27 +874,19 @@ class Cordex(Indicatori):
             lista_completa.append(anomalia)
 
         tutti_modelli = xr.concat(lista_completa, dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
         tutti_modelli = tutti_modelli.mean(dim='time')
-        
+
         # Aggiunta delle coordinate geografiche
         tutti_modelli = tutti_modelli.assign_coords({
             'lon': lista_completa[0].lon, 
             'lat': lista_completa[0].lat
         })
 
-        #tutti_modelli = tutti_modelli.rename(indicatore.upper())
-
-        ensamble=tutti_modelli
-        ensamble[f"{indicatore.upper()}_STD"] = tutti_modelli_std[indicatore]
-
-        
         # Salva il risultato finale
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
         print("Completo")
         print(output_file)
-        ensamble.to_netcdf(output_file, mode='w', format="NETCDF4")
-        return ensamble
+        tutti_modelli.to_netcdf(output_file, mode='w', format="NETCDF4")
 
     def r20(self):
         self.r10(freq='1Y', thresh=20, indicatore='R20')
@@ -939,10 +905,8 @@ class Cordex(Indicatori):
             try:
                 # Carica i dati e rinomina le coordinate
                 data = self.getNetcdfOpenDataset(modello, variabile='pr')
-                try:
-                    data = data.rename({'y': 'rlat', 'x': 'rlon'})
-                except:
-                    print('no')
+                data = data.rename({'y': 'rlat', 'x': 'rlon'})
+
                 miomodello = xr.where(data < 1, 0, data)
                 miomodello = miomodello.assign_attrs(units='mm/day')
                 indicatore_tot = xclim.indices.max_n_day_precipitation_amount(miomodello, window=thresh, freq=freq)
@@ -958,8 +922,8 @@ class Cordex(Indicatori):
                 dataset = dataset.assign_coords({'lon': indicatore_tot.lon, 'lat': indicatore_tot.lat})
 
                 # periodi
-                passato = dataset.sel(time=slice(str(self.annoInizio) + '-01-01', str(self.annoFine) + '-12-31')).mean(dim='time')
-                futuro = dataset.sel(time=slice(str(self.annoInizioFuturo) + '-01-01', str(self.annoFineFuturo) + '-12-31')).mean(dim='time')
+                passato = miomodello.sel(time=slice(str(self.annoInizio) + '-01-01', str(self.annoFine) + '-12-31')).mean(dim='time')
+                futuro = miomodello.sel(time=slice(str(self.annoInizioFuturo) + '-01-01', str(self.annoFineFuturo) + '-12-31')).mean(dim='time')
                 
                 # calcolo anomalia
                 anomalia = ((futuro - passato)/passato)*100
@@ -975,7 +939,6 @@ class Cordex(Indicatori):
         
         # Calcola la media dell'ensemble
         tutti_modelli = xr.concat(lista_completa, dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
         tutti_modelli = tutti_modelli.mean(dim='time')
         
         # Aggiunta delle coordinate geografiche
@@ -985,10 +948,11 @@ class Cordex(Indicatori):
         })
         
         # rinomino la variabile con il nome indicatore
-        
-        #ensamble = tutti_modelli.rename(indicatore.upper())
-        ensamble=tutti_modelli
-        ensamble[f"{indicatore.upper()}_STD"] = tutti_modelli_std[indicatore]
+        ensamble = tutti_modelli.rename(indicatore.upper())
+        # print(ensamble)
+        # ensamble = tutti_modelli.rename({'tasmin': indicatore})
+        # ensamble = tutti_modelli.rename({'tas': indicatore})
+        # ensamble = tutti_modelli.rename({'tasmax': indicatore})
         
          # Salva il risultato finale
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
@@ -1005,139 +969,6 @@ class Cordex(Indicatori):
     def rx5day(self, indicatore='RX5DAY'):
         self.rxday(indicatore=indicatore, thresh=5, freq='YS')
 
-    def drought_spei(self, daily_water_budget, baseline = (1981, 2011), scale=3):
-        from climate_indices import indices as cindx
-        """ Using Standard Precipitation index """
-        
-        ## Wrap daily precipitation function
-        DISTRIBUTION = cindx.Distribution['pearson']
-        DATA_START_YEAR = int(daily_water_budget.isel(time=0)['time.year'])
-        CALIBRATION_YEAR_INITIAL = baseline[0]
-        CALIBRATION_YEAR_FINAL = baseline[1] - 1
-        PERIODICITY = cindx.compute.Periodicity['monthly']
-        compute_spei =   lambda x : cindx.spi(x, 
-                                            scale,
-                                            DISTRIBUTION,
-                                            DATA_START_YEAR,
-                                            CALIBRATION_YEAR_INITIAL,
-                                            CALIBRATION_YEAR_FINAL,
-                                            PERIODICITY)
-        print(compute_spei)
-        
-        ## compute SPEI/pearson at scale-month scale
-        tp_monthly = daily_water_budget.chunk({'time' : -1}) # re-chunk along time axis
-        time_dim = tp_monthly.sizes['time']
-
-        stand_prec_index = xr.apply_ufunc(compute_spei,
-                                tp_monthly,
-                                input_core_dims=[['time']],
-                                exclude_dims=set(('time',)),
-                                output_core_dims=[['time']],
-                                output_sizes={'time': time_dim},
-                                dask = 'parallelized',
-                                output_dtypes  = [float],
-                                vectorize = True
-                                )
-        
-        ## setting up the original time axis 
-        old_time_ax = tp_monthly['time'].values
-        stand_prec_index = stand_prec_index.assign_coords(time=old_time_ax)
-        #print(list(stand_prec_index.variables.keys())[0] )
-        prec_label = list(stand_prec_index.variables.keys())[0]
-        #print(stand_prec_index)
-        stand_prec_index = stand_prec_index.rename({ prec_label : 'drought'})
-        stand_prec_index['drought'].attrs['long_name'] = 'drought index '
-        stand_prec_index['time'].attrs['long_name'] = 'time'
-       
-        return  stand_prec_index
-    
-    def spei3(self, indicatore = 'SPEI3', scale=3):
-        file_indicatore_completo = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
-        
-        model_list = self.getNetcdfModelData('pr')
-        # model_list = model_list[0:2]
-        lista_completa = []
-        
-        # annoInizio = 1981
-        # annoInizioFuturo = 2036
-        # annoFine = annoInizio + 30 - 1
-        # annoFineFuturo = annoFine + 30 - 1
-
-        cal_start = '1981-01-01'
-        cal_end='2010-12-01'
-
-        # outputPath = '/work/cmcc/ab03024/indicatori/BOSNIA_CORDEX'
-
-        spi_list = []
-        for modello in model_list:
-            print(f"Processando modello: {modello}")
-            regex = r"model([0-9]+)_rcp"
-            matches = re.finditer(regex, modello, re.DOTALL)
-            modelloNumero = [match.group(1) for match in matches][0]
-            
-            tp_daily = xr.open_dataset(modello)
-            #tp_daily=tp_daily['pr']
-            daily_water_budget = f'{self.path_indicatori_cache}/EU-CORDEX-11_DWB_MODEL{modelloNumero}_1981-2100_{self.scenario_dir}.nc'
-            daily_water_budget = xr.open_dataset(daily_water_budget)
-            spei = self.drought_spei(daily_water_budget, scale=scale)
-            print(spei.isel(time=5).values)
-            # spei = spei.rename({'y': 'rlat', 'x': 'rlon'})
-            
-            classes = [(-2, float('-inf'), 'Extremely_dry'),
-                        (-1.5, -2, 'Severely_dry'),
-                        (-1, -1.5, 'Moderately_dry'), 
-                        (1, -1, 'Near_normal'), 
-                        (1.5, 1, 'Moderately_wet'), 
-                        (2, 1.5, 'Very_wet'),
-                        (float('inf'), 2, 'Extremely_wet')]
-
-            #numero di tempi = 12 mesi *30 anni=360 mesi
-            numero_di_tempi = 12*30
-            ds = xr.Dataset()
-            for thresholds in classes:
-                spei_one_class = spei['drought'].where((spei['drought'] < thresholds[0]) & (spei['drought'] > thresholds[1]))
-                
-                spei_benchmark = spei_one_class.sel(time = slice(cal_start, cal_end))
-                spei_scenario = spei_one_class.sel(time = slice(str(self.annoInizioFuturo) + '-01-01', str(self.annoFineFuturo) + '-12-01'))
-                
-                percentage_future = spei_scenario.count(dim='time') / len(spei_scenario.time) * 100
-                percentage_past = spei_benchmark.count(dim='time') / len(spei_benchmark.time) * 100
-
-                spei_anomaly = percentage_future - percentage_past
-                
-                ds[thresholds[2]] = spei_anomaly
-            lista_completa.append(ds)
-        # concateno
-        spei = xr.concat(lista_completa, dim='modello')
-        
-        print('ensamble')
-        spei_mean = spei.mean(dim='modello')
-        # Calcolo di altre misure statistiche se necessarie
-        spei_std = spei.std(dim='modello')
-        #indiVar = f"{indicatore}_STD"
-        #spei_mean = spei_mean.assign(indiVar = spei_std)
-        #spei_mean[f"{indicatore}_STD"] = spei_std[indicatore]
-        
-        for thresholds in classes:
-            spei_mean[f"{thresholds[2]}_STD"] = spei_std[thresholds[2]]
-        # Aggiunta delle coordinate geografiche
-        pippo = spei_mean.assign_coords({
-            'lon': lista_completa[0].lon, 
-            'lat': lista_completa[0].lat
-        })
-        print(file_indicatore_completo)
-        pippo.to_netcdf(file_indicatore_completo, mode='w', format="NETCDF4")
-        
-        return spei
-    def spei6(self):
-        return self.spi3(indicatore = 'SPEI6', scale=6)
-    
-    def spei12(self):
-        return self.spi3(indicatore = 'SPEI12', scale=12)
-    
-    def spei24(self):
-        return self.spi3(indicatore = 'SPEI24', scale=24)
-        
     def drought_spi(self, tp_daily, baseline = (1981, 2011), scale=3):
         from climate_indices import indices as cindx
         """ Using Standard Precipitation index """
@@ -1191,7 +1022,7 @@ class Cordex(Indicatori):
         file_indicatore_completo = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.scenario_dir}.nc'
         
         model_list = self.getNetcdfModelData('pr')
-        # model_list = model_list[0:2]
+        model_list = model_list[1:2]
         lista_completa = []
         
         # annoInizio = 1981
@@ -1215,11 +1046,7 @@ class Cordex(Indicatori):
             #tp_daily=tp_daily['pr']
             
             spi = self.drought_spi(tp_daily, scale=scale)
-            try:
-                
-                spi = spi.rename({'y': 'rlat', 'x': 'rlon'})
-            except:
-                print('no')
+            spi = spi.rename({'y': 'rlat', 'x': 'rlon'})
             
             classes = [(-2, float('-inf'), 'Extremely_dry'),
                         (-1.5, -2, 'Severely_dry'),
@@ -1247,22 +1074,37 @@ class Cordex(Indicatori):
             lista_completa.append(ds)
         # concateno
         spi = xr.concat(lista_completa, dim='modello')
-        # Prima calcolo la deviazione standard tra i modelli
-        tutti_modelli_std = spi.std(dim='modello')
-        # Poi calcolo la media
         spi_mean = spi.mean(dim='modello')
-        
-        # Aggiungo sia la media che la deviazione standard per ogni classe
-        for classe in tutti_modelli_std.data_vars:
-            # Aggiungo la std con il suffisso _DEV
-            spi_mean[f"{classe}_STD"] = tutti_modelli_std[classe]
-        
+        # Calcolo di altre misure statistiche se necessarie
+        spi_std = spi.std(dim='modello')
+        spi_min = spi.min(dim='modello')
+        spi_max = spi.max(dim='modello')
+
+        # Stampa dei risultati per ogni classe di siccità
+        classi_siccita = [
+            'Extremely_dry',
+            'Severely_dry',
+            'Moderately_dry',
+            'Near_normal',
+            'Moderately_wet',
+            'Very_wet',
+            'Extremely_wet'
+        ]
+
         # Aggiunta delle coordinate geografiche
-        spi_mean = spi_mean.assign_coords({
+        tutti_modelli = tutti_modelli.assign_coords({
             'lon': lista_completa[0].lon, 
             'lat': lista_completa[0].lat
         })
         
+        print("Anomalie medie per ogni classe di siccità:")
+        for classe in classi_siccita:
+            print(f"\n{classe}:")
+            print(f"Media: {spi_mean[classe].values.mean():.2f}%")
+            print(f"Deviazione standard: {spi_std[classe].values.mean():.2f}%")
+            print(f"Minimo: {spi_min[classe].values.min():.2f}%")
+            print(f"Massimo: {spi_max[classe].values.max():.2f}%")
+            
         spi_mean.to_netcdf(file_indicatore_completo, mode='w', format="NETCDF4")
         
     def spi6(self):
@@ -1280,23 +1122,19 @@ class Cordex(Indicatori):
         '''
         self.hw(thresh=thresh, freq=freq, indicatore=indicatore, variabile='tasmin')
 
-    def tr_pr(self, indicatore='TRPR', freq='YS', t=0, mode='max'):
+    def tr_pr(self, indicatore='TR_PR', freq='YS', t=0, mode='max'):
         
         model_list = self.getNetcdfModelData('pr')
-        
         lista_completa = []
         #self.tprctile(indicatore=indicatore, variabile='tasmax', percentile=99, freq=freq)
-        model_list = model_list[1:2]
+        #model_list = model_list[1:2]
         #print(model_list)
         for modello in model_list:
             print(f"Processando modello: {modello}")
             try:
                 # Carica i dati e rinomina le coordinate
                 pr = self.getNetcdfOpenDataset(modello, variabile='pr')
-                try:
-                    pr = pr.rename({'y': 'rlat', 'x': 'rlon'})
-                except: 
-                    print('no')
+                pr = pr.rename({'y': 'rlat', 'x': 'rlon'})
                 
                 # elimino il rumode del modello
                 pr = xr.where(pr < 1, 0, pr)
@@ -1304,9 +1142,10 @@ class Cordex(Indicatori):
                 pr_past = pr.sel(time = slice(str(self.annoInizio) + '-01-01', str(self.annoFine) + '-12-01'))
                 tr_past_raw = frequency_analysis(pr_past, t=t, dist='genextreme', mode=mode, freq=freq)
                 tr_past = xr.Dataset({
-                    indicatore: (['rlat', 'rlon'], tr_past_raw.values),
+                    indicatore: (['return_period', 'rlat', 'rlon'], tr_past_raw.values),
                     'lat': (['rlat', 'rlon'], pr.lat.values),
                     'lon': (['rlat', 'rlon'], pr.lon.values),
+                    'return_period': tr_past_raw.return_period, 
                     'rlat': tr_past_raw.rlat,
                     'rlon': tr_past_raw.rlon})
                 del tr_past_raw
@@ -1327,10 +1166,10 @@ class Cordex(Indicatori):
                 
                 del tr_past
                 tr_anomaly = xr.Dataset({
-                    indicatore: (['rlat', 'rlon'], tr_anomaly_raw.values),
+                    indicatore: (['return_period', 'rlat', 'rlon'], tr_anomaly_raw.values),
                     'lat': (['rlat', 'rlon'], tr_future.lat.values),
                     'lon': (['rlat', 'rlon'], tr_future.lon.values),
-                    #'return_period': tr_anomaly_raw.return_period,
+                    'return_period': tr_anomaly_raw.return_period,
                     'rlat': tr_anomaly_raw.rlat,
                     'rlon': tr_anomaly_raw.rlon})
                 
@@ -1340,18 +1179,16 @@ class Cordex(Indicatori):
                 print(f"Errore nel processare il modello rxday: {modello}: {e}")
                 
         tutti_modelli = xr.concat(lista_completa, dim='time')
-        tutti_modelli_mean = tutti_modelli.mean(dim='time')
-        tutti_modelli_std = tutti_modelli.std(dim='time')
-        tutti_modelli_mean[f"{indicatore}_STD"] = tutti_modelli_std[indicatore]
+        tutti_modelli = tutti_modelli.mean(dim='time')
         
         # Aggiunta delle coordinate geografiche
-        tutti_modelli_mean = tutti_modelli_mean.assign_coords({
+        tutti_modelli = tutti_modelli.assign_coords({
             'lon': lista_completa[0].lon, 
             'lat': lista_completa[0].lat
         })
-        print(tutti_modelli_mean)
+        
         # rinomino la variabile con il nome indicatore
-        #ensamble = tutti_modelli.rename(indicatore.upper())
+        ensamble = tutti_modelli.rename(indicatore.upper())
         # print(ensamble)
         # ensamble = tutti_modelli.rename({'tasmin': indicatore})
         # ensamble = tutti_modelli.rename({'tas': indicatore})
@@ -1361,15 +1198,15 @@ class Cordex(Indicatori):
         output_file = f'{self.outputPath}/{self.modelData}_{indicatore.lower()}_{self.annoInizio}-{self.annoFine}_{self.annoInizioFuturo}-{self.annoFineFuturo}_{self.scenario_dir}.nc'
         print(f"Completo {indicatore}")
         print(output_file)
-        tutti_modelli_mean.to_netcdf(output_file, mode='w', format="NETCDF4")
-        return tutti_modelli_mean
+        ensamble.to_netcdf(output_file, mode='w', format="NETCDF4")
+        return ensamble
     
-    def tr20pr(self, indicatore='TR20PR', freq='YS', t=20, mode='max'):
+    def tr20pr(self, indicatore='TR20_PR', freq='YS', t=20, mode='max'):
         return self.tr_pr(indicatore=indicatore, freq=freq, t=t, mode=mode)
     
-    def tr50pr(self, indicatore='TR50PR', freq='YS', t=50, mode='max'):
+    def tr50pr(self, indicatore='TR50_PR', freq='YS', t=50, mode='max'):
         return self.tr_pr(indicatore=indicatore, freq=freq, t=t, mode=mode)
 
-    def tr100pr(self, indicatore='TR100PR', freq='YS', t=100, mode='max'):
+    def tr100pr(self, indicatore='TR100_PR', freq='YS', t=100, mode='max'):
         return self.tr_pr(indicatore=indicatore, freq=freq, t=t, mode=mode)
-
+        
