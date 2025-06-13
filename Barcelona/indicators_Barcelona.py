@@ -128,3 +128,29 @@ def spei3(pr, tas, scale = 3):
     
     spei = drought_spei(dwb, scale=scale, baseline = baseline)
     return spei
+
+def txx(tasmax, freq = 'seas', season = ''):
+    tasmax.attrs['units'] = 'degk'
+    if freq == 'seas':
+        txx = xclim.indices.tx_max(tasmax, freq='QS-DEC').groupby('time.season').sel(season = season)
+    else:
+        txx = xclim.indices.tx_max(tasmax, freq='YE')
+    txx.attrs['units'] = 'degK'
+
+    return txx
+
+def heatwave_length(tx, tn, freq='YS'):
+    tx.attrs['units'] = 'degK'
+    tn.attrs['units'] = 'degK'
+
+    indicator = xclim.indices.heat_wave_max_length(tn, tx, freq=freq)
+    indicator.attrs['units'] = 'days'
+    return indicator
+
+def rx5day(pr, thresh = 5, freq = 'YS'):
+    pr = xr.where(pr < 1, 0, pr)
+    pr.attrs['units'] = 'mm/day'
+
+    indicatore_tot = xclim.indices.max_n_day_precipitation_amount(pr, window=thresh, freq=freq)
+    return indicatore_tot
+

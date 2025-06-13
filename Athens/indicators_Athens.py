@@ -60,3 +60,33 @@ def rx5day(pr, thresh = 5, freq = 'YS'):
     
     indicatore_tot = xclim.indices.max_n_day_precipitation_amount(pr, window=thresh, freq=freq)
     return indicatore_tot
+
+
+def su(tx, thresh = 25, freq = 'YE'):
+    tx = tx - 273.15
+    tx.attrs['units'] = 'degC'
+
+    indicator = xr.where(tx > thresh, 1, 0)
+    indicator = indicator.resample(time = freq).sum(dim='time')
+    indicator.attrs['units'] = 'days'
+    return indicator
+
+
+def hot_days(tx, thresh = 35, freq = 'YE'):
+    return su(tx, thresh = thresh)
+
+def wsdi(tx, baseline = ('1991','2021'), compute_percentile = 'yes', per_path =''):
+
+    tx.attrs['units'] = 'degK'
+    if compute_percentile =='no':
+        dspercentile = xr.open_dataset(per_path)
+    else:
+        dspercentile = percentile_doy(tx.sel(time = slice(baseline[0],baseline[1])), window=5, per=90).sel(percentiles=90)
+        print('computed percentile')
+        dspercentile.to_dataset(name = 'percentile').to_netcdf(per_path)
+
+    indicator = xclim.indices.warm_spell_duration_index(tx, dspercentile, window=6, freq='YS')
+    del dspercentile
+    indicator.attrs['units'] = 'days'
+    return indicator
+
