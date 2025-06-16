@@ -21,3 +21,7 @@ def utci(tas, hurs, sfcWind):
 def air_t(tas):
     
     return tas.resample(time = '1D').mean(dim = 'time').resample(time = '1Y').mean(dim = 'time').mean(dim = 'time')
+
+def relhum(rh):
+    
+    return rh.resample(time = '1D').mean(dim = 'time').resample(time = '1Y').mean(dim = 'time').mean(dim = 'time')
