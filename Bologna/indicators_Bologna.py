@@ -35,3 +35,15 @@ def cdds(ds_tas, thresh='21 degC', freq='YS'):
     cdds_raw = xclim.indices.cooling_degree_days(tas=ds_tas, thresh=thresh, freq=freq)
     
     return cdds_raw 
+
+def prcptot(pr):
+    
+    return pr.resample(time = '1Y').sum(dim = 'time').mean(dim = 'time')
+
+def seas_txx(tasmax):
+    txx_summer = xclim.indices.tx_max(tasmax, freq='QS-DEC').groupby('time.season').mean(dim = 'time').sel(season = 'JJA')
+    return txx_summer
+
+def tg(tas):
+    
+    return tas.resample(time = '1D').mean(dim = 'time').resample(time = '1Y').mean(dim = 'time').mean(dim = 'time')
