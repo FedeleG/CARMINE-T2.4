@@ -1,0 +1,6 @@
+*.mod
+*.o
+*.pyc
+*~
+CMakeLists.txt.user
+geff_exe

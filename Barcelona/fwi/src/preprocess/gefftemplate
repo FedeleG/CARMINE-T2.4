@@ -1,0 +1,44 @@
+! GEFF
+!
+! CONTROL
+! * output_file      ex. 'geff.grib'
+! * output_restart   ex. 'restart.grib'
+! * output_constant  output constant fields, T or F
+! * inidate          ex. 20170404
+! * initime          ex. 1200
+! * dt               (h) ex. 24
+! * restart_file     ex. 'restart.grib'
+! * restart_day      number of steps before writing a restart file, ex. 1
+! * now              ex. '20170404'
+!
+! CLIMATE
+! * tempfile      2m temperature 12 local time (Kelvin)
+! * rhfile        2m relative humidity at 12 local time (%)
+! * rainfile      accumulated precipitation in the 24h before (mm/day)
+! * wspeedfile    wind speed intensity (m/s)
+! * snowfile      snow cover mask (0/1)
+!
+! CONSTDATA
+! * lsmfile       land sea mask file
+!
+&CONTROL
+output_file=OUTPUT_FILE_NAME,
+output_restart='output_restart.grib',
+output_constant=F,
+inidate=INITIAL_DATE,
+initime=1200,
+dt=24,
+restart_file=INPUT_RESTART_NAME,
+restart_day=RESTART_DAY,
+now=TIME_NOW
+/
+&CLIMATE
+tempfile=TEMPERATURE_FILE_NAME,
+rhfile=RELATIVE_HUMIDITY_FILE_NAME,
+rainfile=PRECIPITATION_FILE_NAME,
+wspeedfile=WIND_SPEED_FILE_NAME,
+snowfile=SNOW_COVER_FILE_NAME,
+/
+&CONSTDATA
+lsmfile=LAND_MASK_FILE_NAME,
+/
