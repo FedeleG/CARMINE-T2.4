@@ -7,7 +7,6 @@ from src.preprocess.preprocess_temperature import preprocess_temperature
 from src.preprocess.preprocess_relative_humidity import preprocess_relative_humidity
 from src.preprocess.preprocess_precipitation import preprocess_precipitation
 from src.preprocess.preprocess_wind import preprocess_wind
-from src.preprocess.preprocess_snowcover import preprocess_snowcover
 from src.preprocess.preprocess_landmask import preprocess_landmask
 from src.preprocess.save_to_grib import save_to_grib
 from src.preprocess.create_namelist import create_namelist
@@ -44,11 +43,6 @@ def main():
     print("Temperature")
     temperature = preprocess_temperature(year=year,month=month,reduced_domain=reduced_domain,domain_clip=domain_clip)
     create_inputs(variable_name="temperature", variable_data=temperature, this_month_length=this_month_length)
-
-    print("Snow cover")
-    snow_cover = preprocess_snowcover(temperature=temperature)
-    create_inputs(variable_name="snow_cover", variable_data=snow_cover, this_month_length=this_month_length)
-    del snow_cover
 
     print("Relative humidity")
     relative_humidity = preprocess_relative_humidity(year=year,month=month,temperature=temperature,reduced_domain=reduced_domain,domain_clip=domain_clip)
