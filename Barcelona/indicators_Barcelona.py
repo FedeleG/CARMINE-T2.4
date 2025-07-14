@@ -19,7 +19,7 @@ def cdd(pr, thresh='1 mm/day', freq='YS'):
                                                                 resample_before_rl=True)
     return indicator
     
-def drought_spi(tp_daily, baseline = (1981, 2011), scale=3):
+def drought_spi(tp_daily, baseline = (1990, 2006), scale=3):
         from climate_indices import indices as cindx
         """ Using Standard Precipitation index """
 
@@ -58,18 +58,23 @@ def drought_spi(tp_daily, baseline = (1981, 2011), scale=3):
 
         ## setting up the original time axis
         old_time_ax = tp_monthly['time'].values
-        stand_prec_index = stand_prec_index.assign_coords(time=old_time_ax)
+        #stand_prec_index = stand_prec_index.assign_coords(time=old_time_ax)
         #print(list(stand_prec_index.variables.keys())[0] )
-        prec_label = list(stand_prec_index.variables.keys())[0]
+        #prec_label = list(stand_prec_index.variables.keys())[0]
         #print(stand_prec_index)
-        stand_prec_index = stand_prec_index.rename({ prec_label : 'drought'})
-        stand_prec_index['drought'].attrs['long_name'] = 'drought index '
-        stand_prec_index['time'].attrs['long_name'] = 'time'
+        #stand_prec_index = stand_prec_index.rename({ prec_label : 'drought'})
+        #stand_prec_index['drought'].attrs['long_name'] = 'drought index '
+        #stand_prec_index['time'].attrs['long_name'] = 'time'
+        stand_prec_index = stand_prec_index.assign_coords(time=old_time_ax)
+        stand_prec_index.name = 'drought'
+        stand_prec_index.attrs['long_name'] = 'drought index'
+
+
 
         return  stand_prec_index
     
 def spi3(pr, scale = 3):
-    baseline = (1989, 2018)
+    baseline = (1990, 2006)
     spi = drought_spi(pr, scale=scale, baseline = baseline)
     return spi
 
@@ -123,25 +128,69 @@ def spei3(pr, tas, scale = 3):
     pet = xclim.indices.potential_evapotranspiration(method='TW48', tas = tas)
     pr_mon = pr.resample(time='MS').sum(dim = 'time') 
     dwb = pr - pet
-    dwb = dwb.to_dataset(name = 'DWB')
+    dwb = dwb.to_dataset(name = 'DWsB')
     baseline = (1989, 2018)
     
     spei = drought_spei(dwb, scale=scale, baseline = baseline)
     return spei
 
 def txx(tasmax, freq = 'seas', season = ''):
-    tasmax.attrs['units'] = 'degk'
+    tasmax.attrs['units'] = 'degC'
     if freq == 'seas':
-        txx = xclim.indices.tx_max(tasmax, freq='QS-DEC').groupby('time.season').sel(season = season)
+        # txx = xclim.indices.tx_max(tasmax, freq='QS-DEC').groupby('time.season').sel(season = season)
+        # Get seasonal maxima
+        txx = xclim.indices.tx_max(tasmax, freq='QS-DEC')        
+        # Then group by season and reduce, e.g. take the max across each season
+        #txx = txx.groupby('time.season').max()
+        txx = txx.sel(time=txx['time.season'] == season)
+
+
+        # Now you can select one season
+        #txx = txx.sel(season=season)
     else:
         txx = xclim.indices.tx_max(tasmax, freq='YE')
-    txx.attrs['units'] = 'degK'
+    txx.attrs['units'] = 'degC'
+
+    return txx
+#def txx(tasmax, freq = 'seas', season = ''):
+#    tasmax.attrs['units'] = 'degk'
+#    if freq == 'seas':
+#        txx = xclim.indices.tx_max(tasmax, freq='QS-DEC').groupby('time.season').sel(season = season)
+#    else:
+#        txx = xclim.indices.tx_max(tasmax, freq='YE')
+#    txx.attrs['units'] = 'degK'
+
+#    return txx
+
+#    else:
+#        txx = xclim.indices.tx_max(tasmax, freq='YE')
+#    txx.attrs['units'] = 'degC'
+
+#    return txx
+
+def txx(tasmax, freq = 'seas', season = ''):
+    tasmax.attrs['units'] = 'degC'
+    if freq == 'seas':
+        # txx = xclim.indices.tx_max(tasmax, freq='QS-DEC').groupby('time.season').sel(season = season)
+        # Get seasonal maxima
+        txx = xclim.indices.tx_max(tasmax, freq='QS-DEC')        
+        # Then group by season and reduce, e.g. take the max across each season
+        #txx = txx.groupby('time.season').max()
+        txx = txx.sel(time=txx['time.season'] == season)
+
+
+        # Now you can select one season
+        #txx = txx.sel(season=season)
+    else:
+        txx = xclim.indices.tx_max(tasmax, freq='YE')
+    txx.attrs['units'] = 'degC'
 
     return txx
 
+
 def heatwave_length(tx, tn, freq='YS'):
-    tx.attrs['units'] = 'degK'
-    tn.attrs['units'] = 'degK'
+    tx.attrs['units'] = 'degC'
+    tn.attrs['units'] = 'degC'
 
     indicator = xclim.indices.heat_wave_max_length(tn, tx, freq=freq)
     indicator.attrs['units'] = 'days'
