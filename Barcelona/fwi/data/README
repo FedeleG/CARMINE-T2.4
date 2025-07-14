@@ -2,18 +2,13 @@
 
 The FWI is based on daily variables from EMO1 data (info https://data.jrc.ec.europa.eu/dataset/0bd84be4-cec8-4180-97a6-8b3adaac4d26) 
 
-Calculating FWI at 60" spatial resolution 
-1. Noon temperature is calculated from daily max and min temperatures using Sin (14R-1) method8 
-2. Wind speed is limited to 15m/s to avoid wind speed outliers in EMO1.
-3. Relative humidity is calculated from vapor pressure and temperature using the August-Roche-Magnus formula.
-  
-Thresholds for FWI categories 
+Thresholds used for FWI categories 
 
-Low     < 11.2  
+Low             < 11.2  
 Moderate        11.2 - 21.3     
-High    21.3 - 38.0     
+High            21.3 - 38.0     
 Very High       38.0 - 50.0     
-Extreme 50.0 - 70.0     
+Extreme         50.0 - 70.0     
 Very Extreme    > 70.0  
 
-info here https://forest-fire.emergency.copernicus.eu/about-effis/technical-background/fire-danger-forecast 
+info : https://forest-fire.emergency.copernicus.eu/about-effis/technical-background/fire-danger-forecast 
