@@ -26,7 +26,7 @@ def wetdays(pr, thresh="10 mm/day", freq="YS"):
     """
 
     # Assure data is daily:
-    pr_daily = pr.resample(time="D").sum(keep_attrs=True)
+    pr_daily = pr.resample(time="D").mean(keep_attrs=True)
 
     # Calculate indicator
     da = xc.atmos.wetdays(pr_daily, thresh=thresh, freq=freq)
@@ -53,7 +53,7 @@ def cwd(pr, thresh="1 mm/day", freq="YS"):
     """
 
     # Assure data is daily:
-    pr_daily = pr.resample(time="D").sum(keep_attrs=True)
+    pr_daily = pr.resample(time="D").mean(keep_attrs=True)
 
     # Calculate indicator
     da = xc.atmos.maximum_consecutive_wet_days(pr_daily, thresh=thresh, freq=freq)
@@ -80,7 +80,7 @@ def cdd(pr, thresh="1 mm/day", freq="YS"):
     """
 
     # Assure data is daily:
-    pr_daily = pr.resample(time="D").sum(keep_attrs=True)
+    pr_daily = pr.resample(time="D").mean(keep_attrs=True)
 
     # Calculate indicator
     da = xc.atmos.maximum_consecutive_dry_days(pr_daily, thresh=thresh, freq=freq)
@@ -105,7 +105,8 @@ def prcptot(pr, freq="YS"):
     """
 
     # Assure data is daily:
-    pr_daily = pr.resample(time="D").sum(keep_attrs=True)
+
+    pr_daily = pr.resample(time="D").mean(keep_attrs=True)
 
     # Calculate indicator
     da = xc.indicators.atmos.precip_accumulation(pr_daily, freq=freq)
@@ -130,7 +131,7 @@ def rx1day(pr, freq="YS"):
     """
 
     # Assure data is daily:
-    pr_daily = pr.resample(time="D").sum(keep_attrs=True)
+    pr_daily = pr.resample(time="D").mean(keep_attrs=True)
 
     # Calculate indicator
     da = xc.atmos.max_1day_precipitation_amount(pr_daily, freq=freq)
@@ -157,7 +158,7 @@ def spi(pr, freq="MS"):
     """
 
     # Assure data is daily:
-    pr_daily = pr.resample(time="D").sum(keep_attrs=True)
+    pr_daily = pr.resample(time="D").mean(keep_attrs=True)
 
     # Calculate indicator
     try:
