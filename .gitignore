@@ -1,5 +1,7 @@
 # Jupyter
 .ipynb_checkpoints/
 
+*-checkpoint.ipynb
+
 # Generated outputs
 outputs/
