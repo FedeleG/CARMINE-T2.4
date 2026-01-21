@@ -1,0 +1,28 @@
+Metadata description – indicators_Funen-Odense.py
+
+File: indicators_Funen-Odense.py
+Case Study Area: Funen-Odense
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy
+Input: Daily/hourly gridded wind data (NetCDF)
+Output: Extreme Wind Speed indicator (percentage of days exceeding a percentile threshold)
+
+Description:
+This script implements the Extreme Wind Speed (EWS) indicator for the Funen-Odense case study within the CARMINE-T2.4 project. It focuses on assessing wind-related hazards relevant for coastal and maritime environments in northern Europe. The indicator supports analysis of infrastructure vulnerability, renewable energy potential, and climate risk associated with high wind events.
+
+Methodology:
+The EWS indicator is computed as the percentage of days exceeding the 90th percentile of wind speed derived from a reference baseline period (default 1981–2010). Daily wind speed data are pre-processed with unit assignment and percentile calculation. Extreme days are identified, and the yearly proportion is calculated.
+
+Key features:
+
+Calculates extreme wind events based on percentile thresholds
+
+Supports annual aggregation
+
+Efficiently handles multi-dimensional xarray datasets
+
+Reproducible, standardized, and flexible implementation
+
+Intended use:
+The script is intended for technical users analyzing wind extremes in Funen-Odense. It can be integrated into the broader CARMINE repository workflow for indicator computation, post-processing, and visualization.
