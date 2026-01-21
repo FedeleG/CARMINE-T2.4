@@ -1,0 +1,28 @@
+Metadata description – indicators_Birmingham.py 
+
+File: indicators_Birmingham.py
+Case Study Area: Birmingham
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy, climate_indices
+Input: Daily gridded climate data (NetCDF)
+Output: Climate hazard indicators (NetCDF / xarray DataArray)
+
+Description:
+This script implements climate hazard indicators for the Birmingham case study within the CARMINE-T2.4 project. The indicators focus on drought, heat stress, and precipitation extremes, supporting climate impact assessment and vegetation management in temperate urban contexts.
+
+Methodology:
+Indicators are computed using xclim and climate_indices for SPI-based drought metrics. Input data are pre-processed for thresholding, unit conversion, and temporal aggregation. Seasonal or annual summaries are generated in line with the definitions provided in MS21. Baseline periods and thresholds are configurable to ensure reproducibility and consistency.
+
+Key features:
+
+Modular functions for drought, heat, and precipitation indicators
+
+Seasonal and annual aggregation
+
+Efficient processing of multi-dimensional xarray datasets
+
+Reproducible, standardized, and flexible implementation
+
+Intended use:
+The script is intended for technical users computing climate hazard indicators for the Birmingham CSA and can be integrated into broader workflows for indicator calculation, post-processing, and visualization in the CARMINE repository.
