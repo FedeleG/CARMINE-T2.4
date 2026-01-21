@@ -1,0 +1,37 @@
+Metadata description – indicators_Leipzig.py
+
+File: indicators_Leipzig.py
+Case Study Area: Leipzig
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy
+Input: Daily/hourly gridded temperature, precipitation, humidity, and wind data (NetCDF)
+Output: Climate indicators including warm spell duration, universal thermal climate index, annual mean temperature, maximum 5-day precipitation, and 95th percentile precipitation
+
+Description:
+This script implements multiple climate indicators for the Leipzig case study within the CARMINE-T2.4 project. It focuses on extreme temperature and precipitation events, as well as thermal comfort, to support climate impact assessment and adaptation planning in an urban central European context.
+
+Methodology:
+
+Warm Spell Duration Index (WSDI): Computes the number of days in warm spells relative to a baseline period. Users can either compute the 90th percentile internally or load a pre-computed percentile file.
+
+Universal Thermal Climate Index (UTCI): Integrates temperature, humidity, and wind to assess human thermal stress.
+
+Air Temperature (air_t): Aggregates daily data to annual mean temperatures for climate monitoring.
+
+Maximum 5-day Precipitation (rx5day): Calculates extreme short-term precipitation events, resampling daily totals over a specified frequency.
+
+95th Percentile of Precipitation (pr95prctile): Computes the 95th percentile of precipitation, handling missing or negligible values, for extreme event analysis.
+
+Key features:
+
+Handles multi-dimensional xarray datasets efficiently
+
+Supports flexible baseline periods for percentile-based indicators
+
+Provides both thermal stress and precipitation extremes assessment
+
+Reproducible and modular for integration into broader CSA workflows
+
+Intended use:
+The script is designed for technical users analyzing climate extremes in Leipzig. It can be integrated into the CARMINE repository workflow for indicator computation, post-processing, and visualization, supporting standardized evaluation across multiple datasets.
