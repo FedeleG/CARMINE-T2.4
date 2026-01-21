@@ -1,3 +1,4 @@
+*.png
 # Jupyter
 .ipynb_checkpoints/
 
