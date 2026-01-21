@@ -1,0 +1,28 @@
+Metadata description – indicators_Bologna.py 
+
+File: indicators_Bologna.py
+Case Study Area: Bologna
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy
+Input: Daily gridded climate data (NetCDF)
+Output: Climate hazard indicators (NetCDF / xarray DataArray)
+
+Description:
+This script implements climate hazard indicators for the Bologna case study within the CARMINE-T2.4 project. The indicators focus on heat stress, warm spell duration, temperature extremes, cooling degree days, and precipitation, supporting assessment of climate impacts in a temperate Mediterranean urban context.
+
+Methodology:
+Indicators are computed using xclim functions and standard aggregation approaches. Input data are pre-processed for unit conversion, thresholding, and temporal aggregation. Seasonal and annual summaries are generated following the MS21 definitions. Percentile-based and baseline-dependent indicators are included for heat stress metrics such as warm spell duration (WSDI).
+
+Key features:
+
+Modular functions for temperature extremes, warm spells, cooling degree days, and precipitation totals
+
+Seasonal and annual aggregation
+
+Efficient processing of multi-dimensional xarray datasets
+
+Reproducible, standardized, and flexible implementation
+
+Intended use:
+The script is intended for technical users computing climate hazard indicators for the Bologna CSA and can be integrated into broader workflows for indicator calculation, post-processing, and visualization in the CARMINE repository.
