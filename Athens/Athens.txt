@@ -1,0 +1,28 @@
+Metadata description – indicators_Athens.py 
+
+File: indicators_Athens.py
+Case Study Area: Athens
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy
+Input: Daily gridded climate data (NetCDF)
+Output: Climate hazard indicators (NetCDF / xarray DataArray)
+
+Description:
+This script implements a set of climate hazard indicators developed for the Athens case study within the CARMINE-T2.4 project. The indicators address temperature- and precipitation-related hazards relevant to Mediterranean urban contexts and are computed from daily gridded climate datasets.
+
+Methodology:
+Indicator calculations are based on standardized approaches, primarily using the xclim library, combined with xarray-based preprocessing and temporal aggregation. Where required, fixed thresholds and climatological baselines are applied in accordance with the definitions provided in MS21. Percentile-based indicators can be computed dynamically or read from external reference files to ensure methodological consistency.
+
+Key features:
+
+Consistent implementation of MS21 indicator definitions
+
+Seasonal and annual aggregation
+
+Support for large multi-dimensional datasets
+
+Reproducible and modular functions
+
+Intended use:
+The script is intended for technical users involved in the computation and analysis of climate hazard indicators for the Athens CSA and can be integrated into broader processing and post-processing workflows within the CARMINE repository.
