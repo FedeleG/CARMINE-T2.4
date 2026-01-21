@@ -1,0 +1,28 @@
+Metadata description – indicators_Brasov.py
+
+File: indicators_Brasov.py
+Case Study Area: Brașov
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy, climate_indices
+Input: Daily/hourly gridded climate data (NetCDF)
+Output: Climate hazard indicators (NetCDF / xarray DataArray)
+
+Description:
+This script implements climate hazard indicators for the Brașov case study within the CARMINE-T2.4 project. The indicators focus on drought, heat stress, thermal comfort, and precipitation extremes, supporting assessment of climate impacts for water scarcity, extreme temperatures, and general thermal stress in a continental European context.
+
+Methodology:
+Indicators are computed using xclim and climate_indices functions. Input data are pre-processed for unit conversion, thresholding, and temporal aggregation. Indicators include standardized indices such as SPI (Standard Precipitation Index), UTCI (Universal Thermal Climate Index), consecutive dry days (CDD), summer days (SU), and precipitation totals. Monthly or annual aggregations are applied, depending on the indicator.
+
+Key features:
+
+Modular functions for drought, heat, and precipitation indicators
+
+Supports multiple temporal scales (daily, monthly, annual)
+
+Efficient processing of multi-dimensional xarray datasets
+
+Reproducible, standardized, and flexible implementation
+
+Intended use:
+The script is intended for technical users computing climate hazard indicators for the Brașov CSA. It can be integrated into the broader CARMINE repository workflow for indicator computation, post-processing, and visualization.
