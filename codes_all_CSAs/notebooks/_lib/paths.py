@@ -14,6 +14,7 @@ REPO_ROOT = find_repo_root(Path.cwd())
 
 # In this repository, the dataset tree lives directly under the repo root
 DATA_ROOT: Path = REPO_ROOT
+NOTEBOOKS_ROOT: Path = REPO_ROOT / "codes_all_CSAs" / "notebooks"
 
 # Outputs (should NOT be committed)
 OUT_ROOT: Path = REPO_ROOT / "outputs"
