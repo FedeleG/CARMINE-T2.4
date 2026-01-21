@@ -1,0 +1,28 @@
+Metadata description – indicators_Barcelona.py 
+
+File: indicators_Barcelona.py
+Case Study Area: Barcelona
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy, climate_indices
+Input: Daily gridded climate data (NetCDF)
+Output: Climate hazard indicators (NetCDF / xarray DataArray)
+
+Description:
+This script implements a set of climate hazard indicators for the Barcelona case study within the CARMINE-T2.4 project. Indicators focus on heat stress, drought, and precipitation extremes, supporting the assessment of climate impacts in Mediterranean urban contexts.
+
+Methodology:
+The script computes indicators using standardized approaches with xclim and the climate_indices library for SPI/SPEI drought metrics. Input data are pre-processed for unit conversion and threshold masking, and outputs are aggregated seasonally or annually. Percentile-based and baseline-dependent indicators can be computed dynamically or read from reference files to ensure consistency with MS21 definitions.
+
+Key features:
+
+Modular functions for heat, precipitation, and drought indicators
+
+Seasonal and annual aggregation
+
+Efficient processing of multi-dimensional xarray datasets
+
+Reproducible and flexible implementation
+
+Intended use:
+The script is intended for technical users analyzing climate hazard indicators for the Barcelona CSA and can be integrated into broader workflows for indicator computation and post-processing in the CARMINE repository.
