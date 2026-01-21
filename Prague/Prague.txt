@@ -1,0 +1,37 @@
+Metadata description – indicators_Prague.py
+
+File: indicators_Prague.py
+Case Study Area: Prague
+Milestone: MS21 – Climate hazard indicators
+Language: Python
+Libraries: xarray, xclim, NumPy
+Input: Daily/hourly gridded temperature, relative humidity, and wind data (NetCDF)
+Output: Climate indicators including universal thermal climate index, annual mean temperature, annual mean relative humidity, summer days, and hot days
+
+Description:
+This script implements climate indicators tailored for the Prague case study within the CARMINE-T2.4 project. It focuses on thermal stress and basic temperature/humidity metrics to support urban climate risk assessment and adaptation strategies.
+
+Methodology:
+
+Universal Thermal Climate Index (UTCI): Combines air temperature, relative humidity, and wind to assess human thermal comfort and heat stress.
+
+Air Temperature (air_t): Aggregates daily temperature data to compute annual mean temperature for climate monitoring purposes.
+
+Relative Humidity (relhum): Aggregates daily relative humidity to compute annual mean values.
+
+Summer Days (SU): Counts days with maximum temperature above 25°C over a given frequency (annual by default).
+
+Hot Days (TX35): Counts days exceeding 35°C, implemented as a wrapper over the SU indicator function.
+
+Key features:
+
+Efficient multi-dimensional data handling with xarray
+
+Modular design for integration into CSA-wide indicator workflows
+
+Supports both daily aggregation and annual summary indicators
+
+Reproducible computation for urban climate impact assessment
+
+Intended use:
+The script is designed for technical users analyzing thermal stress and temperature extremes in Prague. It can be integrated into the CARMINE repository workflow for indicator computation, post-processing, and visualization, ensuring consistency with indicators computed across other CSAs.
