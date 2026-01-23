@@ -36,24 +36,23 @@ FUA_MAPPING = {
 }
 
 # =========================================================
-# SELECT DATASET AND PILOT AREA --> CONFIGURE HERE <--
+# USER CONFIG
 # =========================================================
 
-dataset_name = "emo"
+dataset_name = "cerra"
 pilotarea = "Barcelona"
 CSA = FUA_MAPPING.get(pilotarea, pilotarea)
+
 indicator = "rr"
-var_name = "RR" #indicator.upper()
+var_name = "RR"
 cmap = "Blues"
 
 # =========================================================
 # PARAMS EXTRACTION
 # =========================================================
 
-if dataset_name not in CONFIG:
-    raise ValueError(f"Dataset '{dataset_name}' not recognized. Available: {list(CONFIG.keys())}")
-
 params = CONFIG[dataset_name]
+
 start_year       = params.get("start_year")
 end_year         = params.get("end_year")
 hist_start_year  = params.get("hist_start_year")
@@ -70,214 +69,197 @@ if dataset_name == "eu-cordex-11":
 # PATHS
 # =========================================================
 
-base = f"{pilotarea}/INDICATORS"
-FUA_SHP = "shapefile/UI-boundaries-FUA/FUA_Boundaries.shp"
+base = f"/work/cmcc/gf27821/CARMINE/CARMINE-T2.4/{pilotarea}/INDICATORS"
+FUA_SHP = "/work/cmcc/gf27821/CARMINE/CARMINE-T2.4/shapefile/UI-boundaries-FUA/FUA_Boundaries.shp"
 
 # =========================================================
-# FILENAME BUILDER
+# HELPERS
 # =========================================================
 
 def construct_filename(pilotarea, dataset_name, indicator, start_year, end_year,
-                      hist_start_year=None, hist_end_year=None,
-                      proj_start_year=None, proj_end_year=None,
-                      scenario=None):
-    pilot_lower = pilotarea.lower()
+                       hist_start_year=None, hist_end_year=None,
+                       proj_start_year=None, proj_end_year=None,
+                       scenario=None):
+
+    p = pilotarea.lower()
+
     if dataset_name in ["cerra", "eobs"]:
-        return f"{pilot_lower}_{dataset_name}_{indicator}_eu_{start_year}_{end_year}.nc"
-    elif dataset_name == "era5-2km":
-        return f"{pilot_lower}_{dataset_name}_{indicator}_{start_year}{end_year}.nc"
-    elif dataset_name == "emo":
-        return f"{pilot_lower}_{dataset_name}_{indicator}{start_year}{end_year}.nc"
-    elif dataset_name == "eu-cordex-11":
+        return f"{p}_{dataset_name}_{indicator}_eu_{start_year}_{end_year}.nc"
+    if dataset_name == "era5-2km":
+        return f"{p}_{dataset_name}_{indicator}_{start_year}{end_year}.nc"
+    if dataset_name == "emo":
+        return f"{p}_{dataset_name}_{indicator}{start_year}{end_year}.nc"
+    if dataset_name == "eu-cordex-11":
         return (
-            f"{pilot_lower}_{dataset_name}_{indicator}_"
+            f"{p}_{dataset_name}_{indicator}_"
             f"{hist_start_year}-{hist_end_year}_"
             f"{proj_start_year}-{proj_end_year}_{scenario}.nc"
         )
-    else:
-        raise ValueError(f"Unknown dataset '{dataset_name}'")
 
-# =========================================================
-# TITLE + SAVEFIG BUILDER
-# =========================================================
+    raise ValueError(f"Unknown dataset {dataset_name}")
 
-def get_title_and_savefig(pilotarea, dataset_name, var_name, start_year, end_year,
+
+def get_title_and_savefig(pilotarea, dataset_name, var_name,
+                          start_year, end_year,
                           hist_start_year=None, hist_end_year=None,
                           proj_start_year=None, proj_end_year=None,
                           scenario=None, suffix=""):
 
     if dataset_name == "eu-cordex-11":
-        longitude = "lon"
-        latitude = "lat"
+        lon, lat = "lon", "lat"
         title = (
-            f"Average Map of {var_name} from {hist_start_year}-{hist_end_year} & "
-            f"{proj_start_year}-{proj_end_year}\n"
-            f"over {pilotarea} in {dataset_name} ({scenario})"
+            f"Average Map of {var_name} "
+            f"({hist_start_year}-{hist_end_year} & "
+            f"{proj_start_year}-{proj_end_year}, {scenario})\n"
+            f"{pilotarea}"
         )
-        savefig_name = (
-            f"{pilotarea}_{var_name}_{dataset_name}_"
-            f"{hist_start_year}-{hist_end_year}_"
-            f"{proj_start_year}-{proj_end_year}_{scenario}_{suffix}.png"
-        )
-    elif dataset_name in ["era5-2km", "emo"]:
-        longitude = "lon"
-        latitude = "lat"
-        title = (
-            f"Average Map of {var_name} from {start_year} to {end_year}\n"
-            f"over {pilotarea} in {dataset_name}"
-        )
-        savefig_name = f"{pilotarea}_{var_name}_{dataset_name}_{start_year}-{end_year}_{suffix}.png"
+        fname = f"{pilotarea}_{var_name}_{dataset_name}_{scenario}_{suffix}.png"
+
     elif dataset_name in ["cerra", "eobs"]:
-        longitude = "longitude"
-        latitude = "latitude"
-        title = (
-            f"Average Map of {var_name} from {start_year} to {end_year}\n"
-            f"over {pilotarea} in {dataset_name}"
-        )
-        savefig_name = f"{pilotarea}_{var_name}_{dataset_name}_{start_year}-{end_year}_{suffix}.png"
+        lon, lat = "longitude", "latitude"
+        title = f"Average Map of {var_name} ({start_year}-{end_year})\n{pilotarea}"
+        fname = f"{pilotarea}_{var_name}_{dataset_name}_{start_year}-{end_year}_{suffix}.png"
+
     else:
-        raise ValueError(f"Unknown dataset_name: {dataset_name}")
+        lon, lat = "lon", "lat"
+        title = f"Average Map of {var_name} ({start_year}-{end_year})\n{pilotarea}"
+        fname = f"{pilotarea}_{var_name}_{dataset_name}_{start_year}-{end_year}_{suffix}.png"
 
-    return title, savefig_name, longitude, latitude
+    return title, fname, lon, lat
+
+
+def convert_to_days(arr):
+    unit = np.datetime_data(arr.dtype)[0]
+    conv = {
+        "ns": 1/(1e9*3600*24),
+        "us": 1/(1e6*3600*24),
+        "ms": 1/(1e3*3600*24),
+        "s":  1/(3600*24),
+        "m":  1/(60*24),
+        "h":  1/24,
+        "D":  1.0
+    }
+    return arr.astype("float64") * conv[unit]
+
+
+def get_extent_from_shape(gdf, pad_frac=0.05):
+    minx, miny, maxx, maxy = gdf.total_bounds
+    dx = (maxx - minx) * pad_frac
+    dy = (maxy - miny) * pad_frac
+    return [minx - dx, maxx + dx, miny - dy, maxy + dy]
 
 # =========================================================
-# LOAD DATASET
+# LOAD DATA
 # =========================================================
 
-filename = construct_filename(
+file = f"{base}/{construct_filename(
     pilotarea, dataset_name, indicator,
     start_year, end_year,
     hist_start_year, hist_end_year,
     proj_start_year, proj_end_year,
-    scenario
-)
-
-file = f"{base}/{filename}"
+    scenario)}"
 
 if not os.path.exists(file):
-    raise FileNotFoundError(f"File does not exist: {file}")
+    raise FileNotFoundError(file)
 
-print(f"Loading: {file}")
-ds = xr.open_dataset(file, decode_timedelta=True)
-print(f"Using FUA_NAME: '{CSA}' for pilotarea '{pilotarea}'")
+print(f"Loading {file}")
+ds = xr.open_dataset(file)
+
 if pilotarea == "Birmingham":
-    warnings.warn("Birmingham uses approximate FUA_NAME 'West Midlands urban area'")
+    warnings.warn("Using approximate FUA name for Birmingham")
 
 # =========================================================
-# TIME UNIT CONVERSION
-# =========================================================
-
-def convert_to_days(arr):
-    unit = np.datetime_data(arr.dtype)[0]
-    to_days = {"ns":1/(1e9*3600*24), "us":1/(1e6*3600*24),
-               "ms":1/(1e3*3600*24), "s":1/(3600*24),
-               "m":1/(60*24), "h":1/24, "D":1.0}
-    if unit not in to_days:
-        raise ValueError(f"Unsupported timedelta unit: {unit}")
-    return arr.astype("float64") * to_days[unit]
-
-# =========================================================
-# FUNCTION TO PLOT ONE VARIABLE
+# PLOTTING
 # =========================================================
 
 def plot_var(ds, var_name_plot, suffix):
-    title, savefig_name, longitude, latitude = get_title_and_savefig(
-        pilotarea, dataset_name, var_name_plot, start_year, end_year,
-        hist_start_year, hist_end_year, proj_start_year, proj_end_year,
-        scenario, suffix=suffix
+
+    title, savefig_name, lon_name, lat_name = get_title_and_savefig(
+        pilotarea, dataset_name, var_name_plot,
+        start_year, end_year,
+        hist_start_year, hist_end_year,
+        proj_start_year, proj_end_year,
+        scenario, suffix
     )
 
-    var = ds[var_name_plot]
-    lon_vals = ds[longitude].values
-    lat_vals = ds[latitude].values
+    lon = ds[lon_name].values
+    lat = ds[lat_name].values
 
-    # Convert 1D lon/lat to 2D if needed
-    if lon_vals.ndim == 1 and lat_vals.ndim == 1:
-        lon_2d, lat_2d = np.meshgrid(lon_vals, lat_vals)
+    if lon.ndim == 1 and lat.ndim == 1:
+        lon2d, lat2d = np.meshgrid(lon, lat)
     else:
-        lon_2d, lat_2d = lon_vals, lat_vals
+        lon2d, lat2d = lon, lat
 
-    if np.issubdtype(var.dtype, np.timedelta64):
-        data = convert_to_days(var.data)
-    else:
-        data = var.values
+    data = ds[var_name_plot].values
+    if np.issubdtype(data.dtype, np.timedelta64):
+        data = convert_to_days(data)
     data = np.squeeze(data)
 
-    # Compute extent
-    mask = ~np.isnan(data)
-    lon_valid = np.where(lon_2d[mask] > 180, lon_2d[mask] - 360, lon_2d[mask])
-    lat_valid = lat_2d[mask]
-    lon_min, lon_max = lon_valid.min(), lon_valid.max()
-    lat_min, lat_max = lat_valid.min(), lat_valid.max()
-    lon_pad = (lon_max - lon_min) * 0.1
-    lat_pad = (lat_max - lat_min) * 0.1
+    lon2d = np.where(lon2d > 180, lon2d - 360, lon2d)
 
     # Load FUA
     try:
-        fua_gdf = gpd.read_file(FUA_SHP).to_crs(epsg=4326)
-        fua_shape = fua_gdf[fua_gdf["FUA_NAME"] == CSA]
-        fua_found = not fua_shape.empty
+        fua = gpd.read_file(FUA_SHP).to_crs(epsg=4326)
+        fua = fua[fua["FUA_NAME"] == CSA]
+        fua_found = not fua.empty
     except Exception as e:
-        print(f"Warning: Could not load FUA shapefile: {e}")
-        fua_shape = None
+        print(e)
         fua_found = False
 
-    # Plot
-    plt.figure(figsize=(12,10))
+    if fua_found:
+        extent = get_extent_from_shape(fua)
+    else:
+        extent = [
+            np.nanmin(lon2d), np.nanmax(lon2d),
+            np.nanmin(lat2d), np.nanmax(lat2d)
+        ]
+
+    fig = plt.figure(figsize=(12, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
 
-    # Gridlines with max 4 ticks
-    gl = ax.gridlines(draw_labels=True, dms=False, alpha=0.5, linestyle="--")
+    gl = ax.gridlines(draw_labels=True, linestyle="--", alpha=0.5)
     gl.top_labels = False
     gl.right_labels = False
-    gl.xformatter = LongitudeFormatter(number_format='.1f')
-    gl.yformatter = LatitudeFormatter(number_format='.1f')
+    gl.xformatter = LongitudeFormatter(".1f")
+    gl.yformatter = LatitudeFormatter(".1f")
     gl.xlocator = MaxNLocator(4)
     gl.ylocator = MaxNLocator(4)
 
-    # Plot data
-    lon_plot = np.where(lon_2d > 180, lon_2d - 360, lon_2d)
     im = ax.pcolormesh(
-        lon_plot, lat_2d, data,
+        lon2d, lat2d, data,
         cmap=cmap,
-        vmin=np.nanpercentile(data,5),
-        vmax=np.nanpercentile(data,95),
+        vmin=np.nanpercentile(data, 5),
+        vmax=np.nanpercentile(data, 95),
         transform=ccrs.PlateCarree()
     )
 
-    # Plot FUA boundary
     if fua_found:
-        fua_shape.boundary.plot(ax=ax, edgecolor="black", linewidth=1, transform=ccrs.PlateCarree())
+        fua.boundary.plot(
+            ax=ax, linewidth=1.2, edgecolor="black",
+            transform=ccrs.PlateCarree()
+        )
 
-    # Colorbar
-    cbar = plt.colorbar(im, ax=ax, shrink=0.8, pad=0.05)
-    cbar.set_label(f"{var_name_plot} (days)", fontsize=12)
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
 
-    # Set extent
-    ax.set_extent([lon_min-lon_pad, lon_max+lon_pad,
-                   lat_min-lat_pad, lat_max+lat_pad], crs=ccrs.PlateCarree())
+    cbar = plt.colorbar(im, ax=ax, pad=0.05, shrink=0.8)
+    cbar.set_label(f"{var_name_plot} (days)")
 
-    # Axis labels
-    ax.set_xlabel("Longitude [degrees]")
-    ax.set_ylabel("Latitude [degrees]")
+    ax.set_xlabel("Longitude [°]")
+    ax.set_ylabel("Latitude [°]")
+    plt.title(title, fontsize=15)
 
-    plt.title(title, fontsize=16)
     plt.savefig(savefig_name, dpi=300, bbox_inches="tight")
     plt.show()
-    print(f"Saved: {savefig_name}")
+
+    print(f"Saved {savefig_name}")
 
 # =========================================================
-# PLOT VARIABLES
+# RUN
 # =========================================================
 
 if dataset_name == "eu-cordex-11":
-    # Ensemble mean
     plot_var(ds, var_name, "ensmean")
-    # Ensemble std
-    var_name_std = f"{var_name}_STD"
-    if var_name_std in ds:
-        plot_var(ds, var_name_std, "ensstd")
-    else:
-        print(f"Warning: {var_name_std} not found in dataset.")
+    if f"{var_name}_STD" in ds:
+        plot_var(ds, f"{var_name}_STD", "ensstd")
 else:
-    plot_var(ds, var_name, "value")
+    plot_var(ds, var_name, "value")                                                       
