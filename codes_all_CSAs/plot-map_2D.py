@@ -68,9 +68,9 @@ if dataset_name == "eu-cordex-11":
 # =========================================================
 # PATHS
 # =========================================================
-
-base = f"/work/cmcc/gf27821/CARMINE/CARMINE-T2.4/{pilotarea}/INDICATORS"
-FUA_SHP = "/work/cmcc/gf27821/CARMINE/CARMINE-T2.4/shapefile/UI-boundaries-FUA/FUA_Boundaries.shp"
+base_path = "/work/CARMINE"
+base = f"{base_path}/CARMINE-T2.4/{pilotarea}/INDICATORS"
+FUA_SHP = f"{base_path}/CARMINE-T2.4/shapefile/UI-boundaries-FUA/FUA_Boundaries.shp"
 
 # =========================================================
 # HELPERS
