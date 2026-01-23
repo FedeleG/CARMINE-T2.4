@@ -4,23 +4,34 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+'''
+To ensure meaningful comparability among climate indicators derived from different datasets, all indicators must be computed over the same reference time period. Indicators calculated over different temporal windows may reflect not only dataset- or model-related differences, but also the effects of climate variability and long-term trends, thus limiting the robustness of any comparative analysis.
+
+The code presented here is intended to demonstrate the functionality of the comparison workflow, using currently available indicator datasets as input. At this stage, these indicators are computed over non-uniform time periods, and the results should therefore be interpreted as a technical demonstration rather than a scientifically consistent comparison.
+
+For robust and reproducible analyses, it is essential to rely on the underlying time series data, from which indicators can be recomputed over a common shared period across all datasets.
+
+'''
+
 # =========================================================
 # CONFIGURATION
 # =========================================================
 
 CONFIG = {
-    "era5-2km": dict(start_year=1989, end_year=2018),
+    #"era5-2km": dict(start_year=1989, end_year=2018), # it does not cover same period
     "cerra": dict(start_year=1981, end_year=2010),
-    "eobs": dict(start_year=1981, end_year=2010)
-}
+    "eobs": dict(start_year=1981, end_year=2010),
+    #"emo": dict(start_year=1991, end_year=2020) #it does not cover same period
+    }
 
 # USER SETTINGS
-pilotarea = "Birmingham"
-indicator = "cdd"
-var_name = "CDD"
+pilotarea = "Barcelona"
+indicator = "rr"
+var_name = "RR"
 
 # PATHS
-base = f"/work/cmcc/gf27821/CARMINE/CARMINE-T2.4/{pilotarea}/INDICATORS"
+path = "/work/CARMINE"
+base = f"{path}/CARMINE-T2.4/{pilotarea}/INDICATORS"
 
 # =========================================================
 # FILENAME BUILDER
@@ -32,6 +43,8 @@ def construct_filename(pilotarea, dataset_name, indicator, start_year, end_year)
         return f"{pilot_lower}_{dataset_name}_{indicator}_eu_{start_year}_{end_year}.nc"
     elif dataset_name == "era5-2km":
         return f"{pilot_lower}_{dataset_name}_{indicator}_{start_year}{end_year}.nc"
+    elif dataset_name == "emo":
+        return f"{pilot_lower}_{dataset_name}_{indicator}{start_year}{end_year}.nc"
     else:
         raise ValueError(f"Unknown dataset '{dataset_name}'")
 
