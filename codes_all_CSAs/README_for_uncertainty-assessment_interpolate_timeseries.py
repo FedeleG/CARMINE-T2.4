@@ -30,7 +30,7 @@ Directory Structure
 -------------------
 The script assumes the following structure:  
 
-/WORK/CMCC/GF27821/CARMINE/CARMINE-T2.4/<PilotArea>/<Dataset>/
+/PATH/CARMINE/CARMINE-T2.4/<PilotArea>/<Dataset>/
 
 NetCDF files should follow the naming convention:  
 
