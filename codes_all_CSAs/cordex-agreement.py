@@ -33,8 +33,8 @@ FUA_MAPPING = {
 CSA = FUA_MAPPING.get(pilotarea, pilotarea)  # Use mapped name if available
 
 # Climate indicator settings
-indicator = "tn10prctile"      # Name of indicator in the workflow
-var_in_nc = "TN10PRCTILE"      # Variable name in NetCDF
+indicator = "tg"      # Name of indicator in the workflow
+var_in_nc = "TG"      # Variable name in NetCDF
 unit = "degreeC"               # Units for plotting
 
 # RCP scenarios to process
