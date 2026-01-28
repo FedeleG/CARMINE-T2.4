@@ -1,4 +1,4 @@
-README for uncertainty-assessment_timeseries.py
+README for uncertainty-assessment_interpolate_timeseries.py
 =================================================
 
 Overview
