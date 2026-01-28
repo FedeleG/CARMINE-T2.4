@@ -26,8 +26,8 @@ FUA_MAPPING = {           # Map pilot area names to official FUA names in shapef
 }
 CSA = FUA_MAPPING.get(pilotarea, pilotarea)  # Use mapped FUA name or fallback to pilotarea
 
-indicator = "PTOT"      # Climate indicator of interest (total precipitation)
-var_in_nc = "PTOT"      # Name of variable inside NetCDF files
+indicator = "RRx1d"      # Climate indicator of interest 
+var_in_nc = "RRx1d"      # Name of variable inside NetCDF files
 
 # Datasets to be used and their valid year ranges
 DATASETS = {
@@ -305,4 +305,4 @@ plot_heatmap(rmse_m, f"RMSE ({CSA}) - {var_in_nc}", cmap="viridis_r")
 vlim = np.nanmax(np.abs(bias_m))
 plot_heatmap(bias_m, f"Bias ({CSA})", vmin=-vlim, vmax=vlim)
 
-print("\nFUA-MASKED analysis COMPLETE!")
+print("\nAnalysis COMPLETE!")
