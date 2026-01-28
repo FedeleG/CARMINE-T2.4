@@ -13,6 +13,9 @@ from shapely.geometry import box
 # USER SETTINGS
 # =========================================================
 
+# This code works on data input test included here: https://github.com/FedeleG/CARMINE-T2.4/blob/main/2601_EURO_CORDEX_testing_data/CARMINE_CORDEX_indicators_ensemble-mean-stdev.zip
+# Additional indicators will be provided soon
+
 # Pilot area name
 pilotarea = "Bologna"
 
