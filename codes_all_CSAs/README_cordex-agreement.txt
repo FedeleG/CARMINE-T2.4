@@ -36,7 +36,7 @@ Data Requirements
 Example file structure:
 
   /data/.../CARMINE/CORDEX/CSA/Bologna/
-      Bologna_EU-CORDEX-11_YEAR_tn10prctile_1981-2010_2036-2065_RCP26.nc
+      Bologna_EU-CORDEX-11_YEAR_tg_1981-2010_2036-2065_RCP26.nc
 
 Configuration
 
