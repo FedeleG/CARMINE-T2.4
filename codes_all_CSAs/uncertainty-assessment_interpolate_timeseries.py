@@ -9,6 +9,9 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import shapely.vectorized as sv
 import os
+from pathlib import Path
+import zipfile
+import shutil
 
 # =========================================================
 # CONFIGURATION
@@ -35,7 +38,7 @@ DATASETS = {
     "EOBS": dict(start_year=1950, end_year=2024),
     "EMO1": dict(start_year=1990, end_year=2024),
     "ERA5": dict(start_year=1980, end_year=2022),
-    "ERA2km": dict(start_year=1989, end_year=2018)
+    "ERA52km": dict(start_year=1989, end_year=2018)
 }
 
 # Baseline period for reference calculations
@@ -43,13 +46,102 @@ start_baseline = 1991
 end_baseline = 2020
 
 # Base folder for NetCDF time series
-path = "insert-path"
+path = "C:/Users/reinhvlr/OneDrive"
 base_path = (
     f"{path}/CARMINE-T2.4/"
     "CARMINE_Past-Climate_CSAs_Indicators_Timeseries/"
-    "CARMINE_Past-Climate_CSAs"
+    #"CARMINE_Past-Climate_CSAs"
 )
 FUA_SHP = f"{path}/CARMINE-T2.4/shapefile/UI-boundaries-FUA/FUA_Boundaries.shp"
+
+# =========================================================
+# UNZIPPER - TEMPORARY DIRECTORY WITHIN DATA DIR
+# =========================================================
+
+unzip_path = Path(base_path) / "_tmp_unzipped_nc"
+unzip_path.mkdir(parents=True, exist_ok=True)
+
+print("=== SELECTIVE UNZIP (per CSA + dataset + indicator selection) ===")
+
+# Where the zips live: per CSA, first level in the CSA folder
+csa_dir = Path(base_path) / pilotarea
+if not csa_dir.exists():
+    raise FileNotFoundError(f"CSA directory not found: {csa_dir}")
+
+# Ensure unzip output dir exists (already created above, but safe)
+unzip_path.mkdir(parents=True, exist_ok=True)
+
+# Loop only over datasets in the user selection
+for dname, p in DATASETS.items():
+    # --- Expected NetCDF filename for THIS selection (same as loader logic) ---
+    expected_nc = (
+        f"CARMINE_{dname}_{pilotarea}_{var_in_nc}_BSL_"
+        f"{start_baseline}_{end_baseline}_YY_{p['start_year']}_{p['end_year']}.nc"
+    )
+
+    # --- Identify the dataset zip ---
+    zpath = csa_dir / f"{dname}.zip"
+    if not zpath.exists():
+        print(f"Skip {dname}: zip not found -> {zpath}")
+        continue
+
+    # --- If we already extracted it, skip ---
+    out_nc = unzip_path / pilotarea / dname / expected_nc
+    if out_nc.exists():
+        print(f"{dname}: OK (already extracted) -> {out_nc}")
+        continue
+
+    # Make sure output subdirs exist
+    out_nc.parent.mkdir(parents=True, exist_ok=True)
+
+    # --- STEP 2: Check whether expected file exists inside the zip ---
+    with zipfile.ZipFile(zpath, "r") as z:
+        members = z.namelist()
+
+        # Many zips store files at root; some may store subfolders.
+        # Match either exact name or any member ending with the expected filename.
+        matches = [m for m in members if m == expected_nc or m.endswith("/" + expected_nc)]
+
+        if len(matches) == 0:
+            print(f"{dname}: NOT FOUND in zip -> {expected_nc}")
+            # Optional: uncomment next line to print a short preview of members for debugging
+            # print("  Members (first 10):", members[:10])
+            continue
+
+        if len(matches) > 1:
+            print(f"{dname}: WARNING multiple matches for {expected_nc} in {zpath.name}")
+            # Prefer the shortest path (usually root-level) to reduce surprises
+            matches.sort(key=len)
+
+        member_to_extract = matches[0]
+
+        # --- STEP 3: Extract only that matching file ---
+        # We extract to a temp location inside out_nc.parent and then rename/move to expected name if needed.
+        extracted_path = Path(z.extract(member_to_extract, path=out_nc.parent))
+
+        # If the member was stored under subfolders in the zip, normalize to the expected output filename
+        if extracted_path.name != expected_nc:
+            # Move/rename to the standardized location
+            # If a file already exists, don't overwrite
+            if out_nc.exists():
+                # Clean up the just-extracted file to avoid clutter
+                try:
+                    extracted_path.unlink()
+                except Exception:
+                    pass
+                print(f"{dname}: OK (already existed after extract?) -> {out_nc}")
+                continue
+
+            extracted_path.rename(out_nc)
+        else:
+            # It extracted directly to out_nc.parent/expected_nc
+            # Ensure it sits at our standardized path (out_nc)
+            if extracted_path != out_nc:
+                extracted_path.rename(out_nc)
+
+        print(f"{dname}: extracted -> {out_nc}")
+
+print("=== SELECTIVE UNZIP DONE ===")
 
 # =========================================================
 # HELPER FUNCTIONS
@@ -192,7 +284,7 @@ lat_all = []
 for dname, p in DATASETS.items():
     # Construct expected filename
     fname = f"CARMINE_{dname}_{pilotarea}_{var_in_nc}_BSL_{start_baseline}_{end_baseline}_YY_{p['start_year']}_{p['end_year']}.nc"
-    path = os.path.join(base_path, pilotarea, dname, fname)
+    path = os.path.join(unzip_path, pilotarea, dname, fname)
 
     # Skip missing files
     if not os.path.exists(path):
@@ -241,6 +333,13 @@ for name, data in loaded.items():
 masked = {}
 for name, da in regridded.items():
     masked[name] = mask_fua_pixels(da, shared_lon, shared_lat, fua_boundary)
+    
+# =========================================================
+# Prepare output directory
+# =========================================================
+
+out_dir = Path(path) / "CARMINE-T2.4" / "outputs" / "uncertainty" / pilotarea / var_in_nc
+out_dir.mkdir(parents=True, exist_ok=True)
 
 # =========================================================
 # Plot datasets (FUA only)
@@ -250,6 +349,7 @@ for name, da in masked.items():
         da, shared_lon, shared_lat, fua_boundary, fua_bounds,
         title=f"{name.upper()}",
         fname=f"{pilotarea}_{name}_FUA_masked.png"
+        # in case you want to save plots: fname=str(out_dir / f"{pilotarea}_{name}_{var_in_nc}_FUA_masked.png")
     )
 
 # =========================================================
@@ -304,5 +404,14 @@ plot_heatmap(spearm, f"Spearman rho ({CSA}) - {var_in_nc}")
 plot_heatmap(rmse_m, f"RMSE ({CSA}) - {var_in_nc}", cmap="viridis_r")
 vlim = np.nanmax(np.abs(bias_m))
 plot_heatmap(bias_m, f"Bias ({CSA})", vmin=-vlim, vmax=vlim)
+
+# =========================================================
+# Clean up tmp_unzipped_nc
+# =========================================================
+if len(loaded) > 0 and unzip_path.exists():
+    shutil.rmtree(unzip_path)
+    print("Cleanup successful.")
+else:
+    print("Cleanup skipped (no data loaded or error occurred).")
 
 print("\nAnalysis COMPLETE!")
