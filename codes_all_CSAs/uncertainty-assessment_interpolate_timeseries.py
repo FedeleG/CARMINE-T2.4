@@ -12,11 +12,12 @@ import os
 from pathlib import Path
 import zipfile
 import shutil
+import gc
 
 # =========================================================
 # CONFIGURATION
 # =========================================================
-pilotarea = "Barcelona"  # Name of the pilot city/area
+pilotarea = "Leipzig"  # Name of the pilot city/area
 FUA_MAPPING = {           # Map pilot area names to official FUA names in shapefile
     "Prague": "Praha",
     "Leipzig": "Leipzig",
@@ -46,7 +47,7 @@ start_baseline = 1991
 end_baseline = 2020
 
 # Base folder for NetCDF time series
-path = "C:/Users/reinhvlr/OneDrive"
+path = "insert path"
 base_path = (
     f"{path}/CARMINE-T2.4/"
     "CARMINE_Past-Climate_CSAs_Indicators_Timeseries/"
@@ -335,21 +336,13 @@ for name, da in regridded.items():
     masked[name] = mask_fua_pixels(da, shared_lon, shared_lat, fua_boundary)
     
 # =========================================================
-# Prepare output directory
-# =========================================================
-
-out_dir = Path(path) / "CARMINE-T2.4" / "outputs" / "uncertainty" / pilotarea / var_in_nc
-out_dir.mkdir(parents=True, exist_ok=True)
-
-# =========================================================
 # Plot datasets (FUA only)
 # =========================================================
 for name, da in masked.items():
     plot_map_with_shapefile(
         da, shared_lon, shared_lat, fua_boundary, fua_bounds,
-        title=f"{name.upper()}",
+        title=f"{CSA} – {name.upper()}",
         fname=f"{pilotarea}_{name}_FUA_masked.png"
-        # in case you want to save plots: fname=str(out_dir / f"{pilotarea}_{name}_{var_in_nc}_FUA_masked.png")
     )
 
 # =========================================================
@@ -406,12 +399,26 @@ vlim = np.nanmax(np.abs(bias_m))
 plot_heatmap(bias_m, f"Bias ({CSA})", vmin=-vlim, vmax=vlim)
 
 # =========================================================
-# Clean up tmp_unzipped_nc
+# Clean up tmp_unzipped_nc (close and remove all data)
 # =========================================================
+for dname, d in loaded.items():
+    try:
+        d["da"].load()  # forces the data into memory
+    except Exception as e:
+        print(f"Warning: could not load {dname} into memory before cleanup: {e}")
+
+    try:
+        xr.backends.file_manager.FILE_CACHE.clear()
+    except Exception as e:
+        print(f"Warning: could not clear xarray FILE_CACHE: {e}")
+
+gc.collect()
+
 if len(loaded) > 0 and unzip_path.exists():
     shutil.rmtree(unzip_path)
     print("Cleanup successful.")
 else:
     print("Cleanup skipped (no data loaded or error occurred).")
+
 
 print("\nAnalysis COMPLETE!")
