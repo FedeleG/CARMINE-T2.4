@@ -7,5 +7,6 @@
 outputs/
 2601_EURO_CORDEX_testing_data/
 CARMINE_Past-Climate_CSAs_Indicators_Timeseries/_tmp_unzipped_nc/
+CARMINE_Past-Climate_CSAs_Indicators_Timeseries/*png
 *.png
 *.nc
