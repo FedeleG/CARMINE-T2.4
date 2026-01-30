@@ -91,6 +91,7 @@ Intended Use
 
 Notes
 -----
+- Run cleaner (final section "Clean up tmp_unzipped_nc (close and remove all data)") when data permission/file not found errors occur
 - Input NetCDF files should contain pre-aggregated temporal data (daily, monthly, or yearly)  
 - All metrics are computed **after regridding and FUA masking**  
 - No original data are modified; outputs are **diagnostic plots only**
