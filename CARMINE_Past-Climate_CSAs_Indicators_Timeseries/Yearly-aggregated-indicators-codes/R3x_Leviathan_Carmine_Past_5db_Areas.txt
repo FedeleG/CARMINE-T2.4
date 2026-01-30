@@ -1,0 +1,856 @@
+#######################################################################################
+#######################################################################################
+### Author - Jonathan Spinoni (CMCC) // Dec 2025 - Jan 2026 ###########################
+#######################################################################################
+### LEVIATHAN CODE FOR CARMINE PROJECT - 8 EU AREAS - 5 PAST DBs - 23 INDICATORS ######
+#######################################################################################
+### WARNING - THIS VERSION RUNS ON LAPTOPS AND IS CRAFTED FOR CARMINE #################
+#######################################################################################
+#######################################################################################
+
+#######################################################################################
+### SECTION 0 - PACKAGES ##############################################################
+#######################################################################################
+require(ncdf4)   ## To deal with input-output files
+require(SPEI)    ## To compute PET, SPI, and SPEI
+require(cffdrs)  ## To compute FWI 
+#######################################################################################
+
+#######################################################################################
+### SECTION 1 - DECISIONS, SPATIAL AND TEMPORAL FEATURES  #############################
+#######################################################################################
+### 1.1 - DECISIONS ###################################################################
+#######################################################################################
+project <- "CARMINE"  ## Name of the project
+db  <- 1  ## DATABASE (1 EOBS, 2 EMO, 3 CERRA, 4 ERA5, 5 ERA2km)
+dm  <- 2  ## DOMAIN (1 for the entire grid - db 5 excluded; 2 for selected areas)
+ar  <- 8  ## How many areas?
+if (dm == 1) ari <- arf <- 1  ## Entire grid (1 area only)
+if (dm == 2) ari <- 1   ## Change if you want to run in parallel (first area to run)
+if (dm == 2) arf <- 8  ## Change if you want to run in parallel (last area to run)
+box <- 1  ## Box in case we select specific areas (centroid +/- deg)
+bsl <- c(1991,2020)  ## REFERENCE PERIOD: choose the baseline (bsli starting year, bslf ending year)
+tst <- 0     ## TEST // One grid point (1 is on, 0 is off)
+if (tst == 1) ari <- arf <- 1  ## In the test run, keep only the first area (and a single point) 
+cond <- 330  ## VALID DATA? Daily data needed to consider that year as valid
+mw <- 2      ## Moving window to compute percentiles (day +/- mw days)
+ap <- c(3)   ## Accumulation period for Spi or Spei
+xe <- 23     ## Number of indicators computed (We removed Cold-Wet days because it is obsolete)
+dv <- 6      ## Variables (TN,TM,TX,RR,RH,WX)
+fwc <- 21    ## Value to start counting days with relevant fire danger
+#######################################################################################
+### 1.2 - AREA(S) OF INTEREST #########################################################
+#######################################################################################
+if (dm == 2) {  ## CARMINE
+ xp <- 1  ## How many percentiles do we need?
+# Define the names and the centroids of the areas (cities)
+ EEn <- c("Prague","Leipzig","Odense","Athens","Barcelona","Bologna","Brasov","Birmingham")
+ ccx <- c(14.42,12.37,10.39,23.73, 2.17,11.34,25.60,-1.90)   ## Longitude centroid of the 8 cities
+ ccy <- c(50.08,51.34,55.40,37.98,41.38,44.49,45.66,52.48) } ## Latitude centroid of the 8 cities
+# Entire grid - Choose a valid inland point to use for tests
+if (dm == 1) ccx <- c(14.42)
+if (dm == 1) ccy <- c(50.08)
+#######################################################################################
+### 1.3 - SPATIAL FEATURES  ###########################################################
+#######################################################################################
+# E-OBS 1950-2024 (0.1°)
+if (db == 1) nxy <- c(705,465)    ## Lon and Lat grid points   
+if (db == 1) res <- c(0.1,0.1)    ## Horizontal resolution
+# EMO-1 1990-2024 (0.0166667°) 
+if (db == 2) nxy <- c(4530,2970)
+if (db == 2) res <- c(0.01667,0.01667)
+# CERRA 1985-2020 (5km, not regular) // Longitude also goes from 181 to 360.
+if (db == 3) nxy <- c(1069,1069)
+if (db == 3) res <- c(0.045,0.07)   ## NOT REGULAR (APPROXIMATION)
+# ERA5 1980-2022 (0.25°)
+if (db == 4) nxy <- c(261,189)
+if (db == 4) res <- c(0.25,0.25) 
+# ERA2km 1989-2022 (2km, not regular) // 4 cities only in positions 1, 4, 5, 6
+if (db == 5) cnx <- c(66,0,0, 80,78, 78,0,0)
+if (db == 5) cny <- c(80,0,0,100,74,104,0,0)
+if (db == 5) res <- c(0.018,0.026)  ## NOT REGULAR (APPROX) 
+
+# How large is the box? (Skip this for the entire grid)
+if (dm == 2) wdt <- c(round(box/res[1]),round(box/res[2])) 
+
+# Define the lon-lat features as from the input files
+if (db %in% c(1,3,4)) lx <- "longitude" 
+if (db %in% c(1,3,4)) ly <- "latitude"  
+if (db %in% c(2,5))   lx <- "lon"
+if (db %in% c(2,5))   ly <- "lat"
+#######################################################################################
+### 1.4 - TEMPORAL FEATURES ###########################################################
+#######################################################################################
+# First and last year and first month of data
+if (db == 1) yif <- c(1950,2024)
+if (db == 2) yif <- c(1990,2024) 
+if (db == 3) yif <- c(1985,2020)
+if (db == 4) yif <- c(1980,2022)
+if (db == 5) yif <- c(1989,2018)
+rst <- c(yif[1], 1)
+
+# Starting month and ending month of the baseline (especially for the drought indicators)
+ri <- c(bsl[1], 1) 
+rf <- c(bsl[2],12)
+if (db == 5) ri <- c(yif[1], 1)  ## ERA5@2km only has data from 1989 to 2018
+if (db == 5) rf <- c(yif[1],12)
+
+# General parameters
+nyr <- 1 + yif[2] - yif[1]  ## Years in the selected dataset
+nm  <- 12         ## Months in a year
+nmt <- 12*nyr     ## Months in the entire selected dataset
+ndy <- 365        ## Standard year is 365 days
+dmi <- c( 1,32,60, 91,121,152,182,213,244,274,305,335)  ## First day of each month 
+dmf <- c(31,59,90,120,151,181,212,243,273,304,334,365)  ## Last day of each month 
+tdp <- 11000      ## 30 Years of daily data plus safety belt for moving window
+stepy <- 365.25   ## Step to include leap years
+
+# Temporal outputs for the ncdf files (once is enough)
+dim3y <- ncdim_def("time","years_count",1:nyr)   ## Annual outputs
+dim3m <- ncdim_def("time","months_count",1:nmt)  ## Monthly outputs
+dim3d <- ncdim_def("time","days_count",1:ndy)    ## Daily outputs
+OutT  <- ncvar_def("year","Years",list(dim3y),0,longname="Years_AD",prec="integer") 
+YR <- array(0,c(nyr))
+#######################################################################################
+### 1.5 - OTHER PARAMETERS (CONVERSION & DISTRIBUTIONS) ###############################
+#######################################################################################
+conv <- -273.15  ## Temperature from °K to °C 
+wspd <-    3.6   ## Wind speed from m/s to km/h
+distr <- c("Gamma","log-Logistic") ## Underlying distribution for Spi and Spei
+#######################################################################################
+
+
+#######################################################################################
+### 2 - INPUT/OUTPUT FILES ############################################################
+#######################################################################################
+### 2.1 - INPUT FILES #################################################################
+#######################################################################################
+# Working directory (Where are the input files stored?)
+wd <- c("EOBS","EMO1","CERRA","ERA5","ERA2km")   ## Name of input datasets
+setwd(paste0("C:/CARMINE/",wd[db],"_Carmine/"))  ## Working directory
+
+# File names and variables (how to read them) // WARNING - We do not read TM (See later)
+FF <- array("NA",c(nyr,dv,ar)) ## Matrix with all the possible input files included
+
+# List the file names and unites  
+if (db == 1) {  ## E-OBS
+ FF[1,1:6,1] <- c("tn_ens_mean_0.1deg_reg_v31.0e.nc","tg_ens_mean_0.1deg_reg_v31.0e.nc",
+                 "tx_ens_mean_0.1deg_reg_v31.0e.nc","rr_ens_mean_0.1deg_reg_v31.0e.nc",
+                 "hu_ens_mean_0.1deg_reg_v31.0e.nc","fg_ens_mean_0.1deg_reg_v31.0e.nc")
+ var <- c("tn","tg","tx","rr","hu","fg") }  ## Units: °C, mm, %, m/s
+
+if (db == 2) { ## EMO-1
+ for (nf in 1:35) {
+  FF[nf,1,1] <- paste0("EMO-1arcmin-tn_",1989+nf,".nc")
+  FF[nf,3,1] <- paste0("EMO-1arcmin-tx_",1989+nf,".nc")
+  FF[nf,4,1] <- paste0("EMO-1arcmin-pr_",1989+nf,".nc") }
+ var <- c("tn","void","tx","pr","void","void") }  ## Units: °C, mm
+
+if (db == 3) {  ## CERRA  // WARNING - Metadata say °K for TN & TX, but they are °C
+ FF[1,1:6,1] <- c("tasmin_day_CERRA_19850101-20201231.nc","void","tasmax_day_CERRA_19850101-20201231.nc",
+                  "pr_day_CERRA_19850101-20201231.nc","relhum_day_CERRA_19850101-20201231.nc","sfcWindmax_day_CERRA_19850101-20201231.nc")
+ var <- c("mn2t","void","mx2t","tp","r2","sfcWindmax") }  ## Units: °C, Kg/m2, %, m/s
+
+if (db == 4) {  ## ERA5
+ FF[1,1:6,1] <- c("ERA5_t2m_daymin_merged.nc","void","ERA5_t2m_daymax_merged.nc",
+                  "ERA5_tp_daysum_merged.nc","ERA5_rh_daymean_merged.nc","ERA5_wind10_daymax_merged.nc")
+ FF[2,1:3,1] <- c("ERA5_t2m_daymin_2021-2022.nc","void","ERA5_t2m_daymax_2021-2022.nc")
+ var <- c("t2m","void","t2m","tp","r","wind10") }  ## Units: °K, m/day, %, m/s(?)
+
+if (db == 5) {  ## ERA@2km (4 areas out of 8)
+ FF[1,1:4,1] <- c("prague_TMIN_2M_1989_2018_CCLM2km.nc","prague_T_2M_1989_2018_CCLM2km.nc",
+                  "prague_TMAX_2M_1989_2018_CCLM2km.nc","prague_TOT_PREC_1989_2018_CCLM2km.nc")
+ FF[1,1:4,4] <- c("athens_TMIN_2M_1989_2018_CCLM2km.nc","athens_T_2M_1989_2018_CCLM2km.nc",
+                  "athens_TMAX_2M_1989_2018_CCLM2km.nc","athens_TOT_PREC_1989_2018_CCLM2km.nc")
+ FF[1,1:4,5] <- c("barcelona_TMIN_2M_1989_2018_CCLM2km.nc","barcelona_T_2M_1989_2018_CCLM2km.nc",
+                  "barcelona_TMAX_2M_1989_2018_CCLM2km.nc","barcelona_TOT_PREC_1989_2018_CCLM2km.nc")
+ FF[1,1:4,6] <- c("bologna_TMIN_2M_1989_2018_CCLM2km.nc","bologna_T_2M_1989_2018_CCLM2km.nc",
+                  "bologna_TMAX_2M_1989_2018_CCLM2km.nc","bologna_TOT_PREC_1989_2018_CCLM2km.nc")
+ var <- c("T_2M","T_2M","T_2M","TOT_PREC","void","void") }  ## Units: °K, mm/day
+#######################################################################################
+### 2.2 - OUTPUT LABELS & VARIABLES ###################################################
+#######################################################################################
+# Name of the input datasets
+EEa <- c("EOBS","EMO1","CERRA","ERA5","ERA2km")
+# Name of the indicators
+EEx <- c("TM","WSDI","HWL","TXx","TNx","SU","HD","TR",
+         "PTOT","RRx1d","RRx5d","RR1","RR10","RR30","CWetD",
+         "PETth","CDryD","SPI3x","EWS98","FWI","CDDs","GDDs","GSL") 
+# Unit of measurement (in the files)
+EEv <- c("degC","days","days","degC","degC","days","days","days",
+         "mm","mm","mm","days","days","days","days",
+         "mm","days","score","m/s","score","degdays","days","days")
+# Percentiles 
+EEp  <- c("TX90")  ## Percentiles stored midway (DD)
+EEpv <- c("degC")  
+# Drought indicators (monthly outputs)
+EEd  <- c("SPI3")  ## change for other projects
+EEs  <- "DR"       ## Derived from the drought indicator(s)
+EEdv <- "values"
+# General name of the outputs (See above for the single areas, in Section 1.2)
+if (dm == 1) EEn <- "GRID"
+#######################################################################################
+
+
+#######################################################################################
+### 3 - OBTAIN LON-LAT FEATURES (ENTIRE GRID) #########################################
+#######################################################################################
+# Reading the inputs to define the core area
+if (db <= 4) {  ## ERA52km excluded here
+ LON <- array(NA,c(nxy[1],nxy[2]))  ## Longitude matrix 
+ LAT <- array(NA,c(nxy[1],nxy[2]))  ## Latitude matrix
+ FX <- nc_open(FF[1,1,1])  ## We open a single file for each area to read lon-lat
+ LX <- ncvar_get(FX,lx)  
+ LY <- ncvar_get(FX,ly) 
+ nc_close(FX)  
+
+# Convert the lon-lat into matrixes
+ for (i in 1:nxy[1]) {
+  for (j in 1:nxy[2]) {   
+   if (db %in% c(1,2,4)) { ## Lon-Lat are vectors for EOBS, EMO1, ERA5 (regular grids) 
+    LON[i,j] <- LX[i]
+    LAT[i,j] <- LY[j] 
+   } else if (db == 3) {   ## Lon-Lat are matrices for for CERRA and ERA2km (rotated grids)
+    LON[i,j] <- LX[i,j]
+    if (LX[i,j] > 180) LON[i,j] <- LX[i,j] - 360  ## CERRA needs to be converted into (-180,180)
+    LAT[i,j] <- LY[i,j]
+    asd <- 0 } }}
+
+# Clean and close
+ if (db == 2) rm(nf)
+ if (db <= 4) rm(LX,LY)
+ gc() }
+#######################################################################################
+
+
+#######################################################################################
+### 4 - CORE COMPUTATION (PERCENTILES, INDICATORS, DROUGHT SPECIAL) ###################
+#######################################################################################
+### EXTERNAL CORE LOOP ON SELECTED AREA(S) ############################################
+for (rr in ari:arf) {  ## CORE LOOP L1 [AREAS]
+ if (dm == 1 & rr >= 2) next  ## Entire grid
+ if (dm == 2 & db == 5 & rr %in% c(2,3,7,8)) next  ## Special case for db 5
+
+#######################################################################################
+### 4.1 - DEFINITION OF THE CORE COMPUTATION AREA [CENTROID AND FULL BOX] #############
+#######################################################################################
+# Special case - Era5 at 2km (Db == 5) - We need to read lon-lat here
+ if (db == 5) {
+  nxy <- c(cnx[rr],cny[rr])  
+  LON <- array(NA,c(nxy[1],nxy[2]))  ## Longitude matrix 
+  LAT <- array(NA,c(nxy[1],nxy[2]))  ## Latitude matrix
+  FX <- nc_open(FF[1,1,rr])
+  LON <- ncvar_get(FX,lx) 
+  LAT <- ncvar_get(FX,ly)
+  nc_close(FX) }
+
+# We look for the centroid of the core computation area (dimensions set in the earlieast sections)
+ ic <- jc <- ki1 <- kj1 <- ki2 <- kj2 <- 0   ## Centroids and borders
+ spot <- box  ## Minimum distance to account for the centroid (grid points vs area centre)
+ for (i in 1:nxy[1]) {
+  for (j in 1:nxy[2]) {
+   d <- sqrt((LON[i,j] - ccx[rr])**2 + (LAT[i,j] - ccy[rr])**2)
+   if (d < spot) ic <- i  ## Centroid
+   if (d < spot) jc <- j  ## Centroid
+   if (d < spot) spot <- d 
+   asd <- 0 }} 
+
+# We now define the box corresponding to the area where we run the computations
+ if (dm == 1) {  ## Case 1 - Entire grid (dm == 1)
+  ki1 <- kj1 <- 1    ## Left and Bottom borders
+  ki2 <- nxy[1]      ## Right border
+  kj2 <- nxy[2]      ## Top border
+  kxy <- c(ki2,kj2)  ## Dimensions of the box area is the entire grid
+  ttt <- c(ic,jc) }  ## The test point is the centroid with no shifts
+
+ if (dm == 2 & min(ic,jc) < 0) next  ## The input data do not cover the area centre
+ if (dm == 2) {  ## Case 2 - Selected areas (dm == 2)
+  if (db <= 4) {  ## Classic datasets
+   ki1 <- ic - round(box/res[1])    ## Left border
+   ki2 <- ic + round(box/res[1])    ## Right border
+   kj1 <- jc - round(box/res[2])    ## Bottom order
+   kj2 <- jc + round(box/res[2])    ## Top border
+   if (ki1 < 1) ki1 <- 1            ## Consitions to avoid "out of bound" 
+   if (kj1 < 1) kj1 <- 1            
+   if (ki2 > nxy[1]) ki2 <- nxy[1]  
+   if (kj2 > nxy[2]) kj2 <- nxy[2]  
+  } else if (db == 5) {  ## Special case (ERA52Km) for available areas
+   ki1 <- kj1 <- 1   ## Borders               
+   ki2 <- nxy[1]     ## Borders
+   kj2 <- nxy[2] }   ## Borders
+  kxy <- c(1+ki2-ki1,1+kj2-kj1)  ## Spatial dimensions of the outputs
+  ttt <- c(1+round(kxy[1]/2),1+round(kxy[2]/2)) } ## Test point
+
+# So we have the new Lon-Lat vectors to define and prepare
+ kLON <- array(NA,c(kxy[1],kxy[2]))  ## Longitude matrix 
+ kLAT <- array(NA,c(kxy[1],kxy[2]))  ## Latitude matrix
+ iiii <- 0  ## Lon pointer
+ for (i in 1:nxy[1]) {  
+  if (i %in% c(ki1:ki2)) {    ## Selected grid points only (lon)
+   iiii <- iiii + 1
+   jjjj <- 0  ## Lat pointer
+   for (j in 1:nxy[2]) {  
+    if (j %in% c(kj1:kj2)) {  ## Selected grid points only (lon)
+     jjjj <- jjjj + 1
+     kLON[iiii,jjjj] <- LON[i,j]  ## New lon matrix
+     kLAT[iiii,jjjj] <- LAT[i,j]  ## New lat matrix
+     asd <- 0 } } } }  
+
+# We also prepare the lon-lat outputs (as 2-dimension variables) for this db and area
+ dim1  <- ncdim_def("x","row",1:kxy[1],longname="x_rows")  ## Longitude points
+ dim2  <- ncdim_def("y","col",1:kxy[2],longname="y_cols")  ## Latitude points
+ OutX  <- ncvar_def("lon","degrees_east",list(dim1,dim2),NA,longname="Longitude",prec="float")
+ OutY  <- ncvar_def("lat","degrees_north",list(dim1,dim2),NA,longname="Latitude",prec="float") 
+
+#######################################################################################
+### 4.2 - PERCENTILES #################################################################
+#######################################################################################
+# Remember: we are inside the area loop. This section may be the longest and heaviest
+ ATT <- array(NA,c(xp,kxy[1],kxy[2],ndy)) ## Percentiles (over 30y)
+ vp  <- c(0.9)  ## Define the thresholds (CARMINE - Only TX90)
+ ptr <- c(3)    ## Pointer for input files corresponding to the position of the variables
+ ppf <- 1       ## Only one output in this case
+
+### CORE CALCULATION OF PERCENTILES ###################################################
+ for (pp in 1:ppf) {  ## CORE LOOP L2 [PERCENTILES]
+  PTT <- array(NA,c(kxy[1],kxy[2],tdp))  ## Initialize 30y of daily data (Heavy for the RAM)
+# Loop over the single years
+  for (yy in 1:30) {  ## CORE LOOP L2a [YEARS]
+   print(c("Percentiles",rr,pp,yy))  ## C1 - First check-point on video
+# Where do we start reading the daily values in large files?
+   if (db %in% c(1,3,4)) ii1 <- 1 + floor(stepy*(bsl[1]-yif[1]+yy-1))  ## Jan 1 of each year
+   if (db == 2) ii1 <- 1                                               ## Jan 1 of each year
+   if (db == 5) ii1 <- 1 + floor(stepy*(yy-1))                         ## Jan 1 of each year
+   if (db == 2) fx  <- yy + bsl[1] - yif[1]  ## Name of the file for EMO-1 (single file for each year)  
+# Define the input file
+   if (db %in% c(1,3,4)) kFF <- nc_open(FF[ 1,ptr[pp],1])
+   if (db == 2)          kFF <- nc_open(FF[fx,ptr[pp],1])
+   if (db == 5)          kFF <- nc_open(FF[1,ptr[pp],rr])  ## BEWARE - It's 1989-2018 for db5
+# Read only one year (repeat 30x times)   
+   if (pp == 1 & db <= 3) XP <- ncvar_get(kFF,var[ptr[pp]],start=c(ki1,kj1,ii1),count=c(kxy[1],kxy[2],ndy))
+   if (pp == 1 & db >= 4) XP <- conv + ncvar_get(kFF,var[ptr[pp]],start=c(ki1,kj1,ii1),count=c(kxy[1],kxy[2],ndy))
+   nc_close(kFF)
+# Move the year into the 30-year vector
+   tti <- 1 + ndy*(yy-1)  ## Position of subsequent Jan 1 for 30 years
+   PTT[,,tti:(tti+ndy-1)] <- XP[,,1:ndy] }  ## CLOSE CORE LOOP2a [YEARS]
+
+### SPATIAL LOOPS S1 [PERCENTILES] ####################################################
+  for (i in 1:kxy[1]) {
+   for (j in 1:kxy[2]) { 
+####### !! TEST 1 !! ############################
+    if (tst == 1 & (i != ttt[1] | j != ttt[2])) next
+####### !! TEST 1 !! ############################
+# Conditions on valid data
+    L <- length(PTT[i,j,1:tdp][is.finite(PTT[i,j,1:tdp])])
+    if (L <= (10*ndy)) next  ## Cannot compute percentiles with less than 10 years of valid data
+# Loop over single days (shift the k pointer back by mw) // Refine in case of different moving window  
+    for (kk in (mw+1):(mw+ndy)) {  ## Mw set to 2 means 5 days x 30 years for each day to compute the percentiles
+     ATT[pp,i,j,kk-mw] <- quantile(PTT[i,j,floor(c(seq(kk-2,tdp,365),seq(kk-1,tdp,365),seq(kk,tdp,365),seq(kk+1,tdp,365),seq(kk+2,tdp,365)))],vp[pp],na.rm=TRUE)
+     asd <- 0 } }}  ## CLOSE SPATIAL LOOPS S1 [PERCENTILES]
+
+### WRITING PART 1 // PERCENTILES #####################################################
+# Single files for each percentile and area (365 days referring to percentiles over 30-year reference period)
+  OutP  <- paste0(project,"_",EEa[db],"_",EEn[rr],"_",EEp[pp],"_BSL_",bsl[1],"_",bsl[2],".nc")  ## Output file
+  OutVP <- ncvar_def(EEp[pp],EEpv[pp],list(dim1,dim2,dim3d),NA,longname=EEp[pp],prec="float")   ## Output data
+  OutFP <- nc_create(OutP,list(OutVP,OutX,OutY)) 
+  ncvar_put(OutFP,OutX,round(kLON,3))  ## Lon is a variable, not only a dimension
+  ncvar_put(OutFP,OutY,round(kLAT,3))  ## Lat is a variable, not only a dimension
+  ncvar_put(OutFP,OutVP,round(ATT[pp,,,],2))  ## PERCENTILES
+  nc_close(OutFP)
+  asd <- 0 }  ## CLOSE CORE LOOP L2 [PERCENTILES]
+
+# Clean before moving to the next part (indicators) // Percentiles and Lon-Lat are kept
+ if (db == 2) rm(fx)
+ rm(PTT,vp,ptr,ppf,pp,ii1,yy,kFF,tti,XP,kk,OutP,OutVP,OutFP)
+ gc()  
+
+#######################################################################################
+### 4.3 - INDICATORS (EXCEPT DROUGHT) #################################################
+#######################################################################################
+### LIST OF INDICATORS (Categories, names, and positions) #############################
+## Heatwaves (Annual outputs)
+# 1. TM (Mean Temperature)
+# 2. WSDI (Warm Spell Duration Index; Number of days with TX > 90p for 6+ consecutive days)
+# 3. HWL (Heatwave Length; Maximum consecutive number of (3+) days  with TN > 22°C and TX > 30°C)
+# 4. TXx (Annual Maximum of daily TX)
+# 5. TNx (Annual Maximum of daily TN)
+# 6. SU (Summer Days; Days with TX > 25°C)
+# 7. HD (Hot Days; Days with TX > 35°C)
+# 8. TR (Tropical Nights; Days with TN > 20°C)
+## Extreme Precipitation (Annual outputs)
+# 9. PTOT (Total Annual Precipitation)
+# 10. RRx1d (Annual maximum 1-day precipitation)
+# 11. RRx5d (Annual maximum 5-day cumulated precipitation)
+# 12. RR1 (Number of rainy days; RR >= 1 mm)
+# 13. RR10 (Number of days with modeate rain; RR >= 10 mm)
+# 14. RR30 (Number of days with heavy rain; RR >= 30 mm)
+# 15. CWD (Consecutive Wet Days - Maximum annual values of consecutive days with RR >= 1 mm)
+## Meteorological Droughts
+# 16. PETth (Potential EvapoTranspiration with Thornthwaite's Method)
+# 17. CDryD (Consecutive Dry Days - Maximum annual values of consecutive days with RR < 1 mm)
+# 18. DR_SPEI-3 (Annual sum, in abs values, of SPEI-3 values <= -0.5) // See Section 5
+## Windstorms
+# 19. EWS98 (98th percentile of daily maximum wind speed, one value for each year)
+## Fires
+# 20. FWI (Fire Weather Index; Number of days with High or Extreme Fire Danger, FWI > 21)
+## Energy Meteorology
+# 21. CDDs (Cooling Degree Days; Annual sum of difference TM - 22°C, if TM > 22°C) 
+## Agrometeorology
+# 22. GDDs (Growing Degree Days; Annual sum of difference TM - 5°C, if TM > 5°C) )
+# 23. GSL (Growing Season Length; Days from first 6 consecutive days with TM > 5°C and
+#     first six consecutive days with TM <= 5°C after July 1)
+
+# Define the Indicators // Annual outputs
+ HH <- array(NA,c(xe,kxy[1],kxy[2],nyr))  ## One value per year (Positions below)
+# Other Bridge Variables
+ HM <- array(NA,c(2,kxy[1],kxy[2],nmt))   ## Monthly values for the entire period (PETth and RR)
+ HN <- array(NA,c(nm))                    ## Monthly values for one year (TM for PETth)
+
+### CORE CALCULATION OF INDICATORS ####################################################
+ for (k in 1:nyr) {  ## CORE LOOP L3 (YEARS)
+  YR[k] <- yif[1]+k-1  ## Year A.D.
+  print(c("Indicators",rr,yif[1]+k-1))  ## C2 - Second check-point on video
+# Special multi-variable year of data
+  XXX <- array(NA,c(dv,kxy[1],kxy[2],ndy))  ## All possible variables, selected domain, 365 days
+  XXY <- array(NA,c(dv,kxy[1],kxy[2],31))   ## December of the previous year
+
+### CORE READING PART #################################################################
+# We loop over the variables [TN (°C), TM (°C) computed afterwards, TX (°C), RR (mm), RH (%), WX (m/s)]
+  for (vv in 1:dv) {  ## CORE LOOP L3a [VARIABLES] 
+   if (vv == 2) next            ## We derive TM from TN and TX
+   if (var[vv] == "void") next  ## If the variable is not included in the input data, skip
+
+# Read one year of data (XXX) and December of the previous year (XXY) where needed
+   if (db == 1) {  ## DB 1 - EOBS // ALL VARIABLES 1950-2024 // ONE SINGLE FILE // !! BEWARE NO WX !!
+    ki <- 1 + floor(stepy*(k-1) + 0.25)  ## Day one of any year
+    if (vv <= 5) {      
+     FZ <- nc_open(FF[1,vv,1])       ## Input file and data (current year)
+     XXX[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))  
+     if (vv %in% c(1:4) & k >= 2) {  ## Input data (previous year)
+      XXY[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],31)) }
+     nc_close(FZ) } }
+
+   if (db == 2) {  ## DB 2 - EMO-1 // ALL VARIABLES 1990-2024 // ONE FILE EACH YEAR // !! BEWARE: NO TM, RH ANd WX !!
+    ki <- 1   ## Day one of any year
+    if (vv %in% c(1,3,4)) { 
+     FZ <- nc_open(FF[k,vv,1])       ## Input file and data (current year)
+     XXX[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))
+     if (k >= 2) {                   ## Input file and data (previous year)
+      FZ2 <- nc_open(FF[k-1,vv,1])   
+      XXY[vv,,,] <- ncvar_get(FZ2,var[vv],start=c(ki1,kj1,335),count=c(kxy[1],kxy[2],31))
+      nc_close(FZ2) }
+     nc_close(FZ) } }
+
+   if (db == 3) {  ## DB 3 - CERRA // ALL VARIABLES 1985-2020 // ONE SINGLE FILE // !! BEWARE: NO TM !!
+    ki <- 1 + floor(stepy*(k-1))  ## Day one of any year
+    FZ <- nc_open(FF[1,vv,1])     ## Input file and data (current year)
+    XXX[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy)) 
+                                  ## Input data (previous year) 
+    if (k >= 2) XXY[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],31)) 
+    nc_close(FZ) }
+
+   if (db == 4) {  ## DB 4 - ERA5 // ALL VARIABLES 1980-2022 // TM, RH, WX ONE FILE; TN & TX TWO FILES 1980-2020 & 2021-2022
+    ki <- 1 + floor(stepy*(k-1) + 0.75)  ## Day one of any year 
+    if (k >= 42) kik <- 1 + 365*(k-42)   ## Day one of 2021 and 2022 for TN and TX
+    if (vv %in% c(1,3)) {  ## TN and TX are 1980-2020 and 2021-2022
+     if (k <= 42) FZ <- nc_open(FF[1,vv,1])  ## Input file and data (1980-2020)
+                           ## Current year (TN,TX)
+     if (k <= 41) XXX[vv,,,] <- conv + ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))
+     if (k >= 42) FZ2 <- nc_open(FF[2,vv,1])  ## Input file and data (2021-2022)  
+     if (k >= 42) XXX[vv,,,] <- conv + ncvar_get(FZ2,var[vv],start=c(ki1,kj1,kik),count=c(kxy[1],kxy[2],ndy))  
+     if (k %in% c(2:42)) XXY[vv,,,] <- conv + ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],1))
+                           ## Previous year (TN,TX)
+     if (k == 43) XXY[vv,,,] <- conv + ncvar_get(FZ2,var[vv],start=c(ki1,kj1,kik-31),count=c(kxy[1],kxy[2],31))
+     if (k <= 42) nc_close(FZ)
+     if (k >= 42) nc_close(FZ2)
+    } else if (vv %in% c(4:6)) {  ## Other variables are 1980-2022                          
+     FZ <- nc_open(FF[1,vv,1])  ## Input file and data (current year)
+     if (vv == 4) XXX[vv,,,] <- 1000*ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))  ## m/day to mm/day
+     if (vv >= 5) XXX[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))  
+     if (k >= 2) {               ## Input data (previous year)  
+      if (vv == 4) XXY[vv,,,] <- 1000*ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],31))
+      if (vv >= 5) XXY[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],31))
+      asd <- 0 }                          
+     nc_close (FZ) } }
+
+   if (db == 5) {  ## DB 5 - ERA2km // ALL VARIABLES 1989-2018// ONE SINGLE FILE // !! BEWARE: NO RH, WX !!  // FOUR AREAS ONLY
+    ki  <- 1 + floor(stepy*(k-1))  ## Day one of any year
+    if (vv <= 4) {
+     FZ <- nc_open(FF[1,vv,rr])  ## Input file and data (current year)
+     if (vv <= 3) XXX[vv,,,] <- conv + ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))
+     if (vv == 4) XXX[vv,,,] <- ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki),count=c(kxy[1],kxy[2],ndy))
+     if (k >= 2) {               ## Input data (previous year)
+      if (vv <= 3) XXY[vv,,,] <- conv + ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],31)) 
+      if (vv == 4) XXY[vv,,,] <- + ncvar_get(FZ,var[vv],start=c(ki1,kj1,ki-31),count=c(kxy[1],kxy[2],31)) 
+      asd <- 0 }
+     nc_close(FZ) } }  
+
+   asd <- 0 }  ## CLOSE CORE LOOP L3a [VARIABLES]
+
+# Calculate TM from TN and TX
+   XXX[2,,,] <- 0.5*(XXX[1,,,] + XXX[3,,,])
+   if (k >= 2) XXY[2,,,] <- 0.5*(XXY[1,,,] + XXY[3,,,])
+
+### SPATIAL LOOPS S2 [INDICATORS] #####################################################
+  for (i in 1:kxy[1]) {  ## Lon
+   for (j in 1:kxy[2]) {  ## Lat 
+####### !! TEST 2 !! ############################
+    if (tst == 1 & (i != ttt[1] | j != ttt[2])) next
+####### !! TEST 2 !! ############################
+# Condition on data availability
+    avb <- array(0,c(dv))  ## Initialize the data availability switch (for the year under examination)
+    for (vv in 1:dv) {  ## TN (°C), TM (°C), TX (°C), RR (mm), RH (%), WX (m/s)
+     if (vv == 2) next  ## We skip TM here
+     if (db == 1 & vv == 6) next
+     if (db == 2 & vv %in% c(2,5,6)) next
+     if (db == 3 & vv == 2) next
+     if (db == 5 & vv >= 5) next
+     LV <- length(XXX[vv,i,j,1:ndy][is.finite(XXX[vv,i,j,1:ndy])])
+     if (LV >= cond) avb[vv] <- 1  ## 90% of valid data to turn on the validity switch
+     asd <- 0 }
+
+# Monthly variables (bridge quantities used later)  // All datasets should have TM, RR, and PET
+    for (m in 1:nm) {  ## 12 months of the current year
+     mt <- m + nm*(k-1)  ## Position of the month in the entire data interval
+     HN[m] <- mean(XXX[2,i,j,c(dmi[m]:dmf[m])],na.rm=TRUE)         ## Monthly TM (current year)
+     HM[2,i,j,mt] <- sum(XXX[4,i,j,c(dmi[m]:dmf[m])],na.rm=TRUE) } ## Monthly RR (entire period)                                                                
+    HM[1,i,j,c((mt-11):mt)] <- thornthwaite(HN[c(1:nm)],lat=kLAT[i,j],na.rm=TRUE,verbose=FALSE)
+                                                                   ## Monthly PETth (entire period)
+
+#######################################################################################
+### THE INDICATORS [CORE OF THE CORE] #################################################
+#######################################################################################
+# Remember - Positions of the variables into XXX & XXY: 1 TN, 2 TM, 3 TX, 4 RR, 5 RH, 6 WX
+# We are inside a quadruple loop: Areas, Years, Lon, Lat
+    
+## INDICATOR 1 - MEAN TEMPERATURE (ANNUAL) ############################################
+    if ((avb[1] + avb[3]) == 2) HH[1,i,j,k] <- mean(XXX[2,i,j,1:ndy],na.rm=TRUE)    
+
+## INDICATOR 2 - WSDI (ANNUAL, TX > TX90p 6+ days) ####################################
+    ww <- 0  ## Initialize the counter (WSDI days)
+    jj <- 1  ## Initialize the pointer   
+
+    if (avb[3] == 1) {  ## Only TX needed
+    HH[2,i,j,k] <- 0   ## Initialize the indicator 
+    bTX <- c(XXY[3,i,j,27:31],XXX[3,i,j,1:ndy])    ## Bridge variable: TX 27 Dec (Y-1) to 31 Dec (Y)
+    pTX <- c(ATT[1,i,j,361:365],ATT[1,i,j,1:ndy])  ## Bridge variable: same but for TX90p
+     for (ii in 1:ndy) {  ## From 27.12 (ii = 1) to 26.12 (ii = ndy) // Need 6+ days
+      if (ii < jj) next
+      if (k == 1 & ii <= 5) next  ## First year cannot have 5 days from previous year 
+      if (is.na(min(bTX[ii:(ii+5)])) | is.na(min(pTX[ii:(ii+5)]))) next
+      if ((bTX[ii]   > pTX[ii])   & (bTX[ii+1] > pTX[ii+1]) & (bTX[ii+2] > pTX[ii+2]) &
+          (bTX[ii+3] > pTX[ii+3]) & (bTX[ii+4] > pTX[ii+4]) & (bTX[ii+5] > pTX[ii+5])) {
+       for (iii in ii:(ndy+5)) {  ## Inside the event (to 31.12, which is ndy + 5)
+        jj <- iii + 1
+        if (is.na(bTX[iii]) | is.na(pTX[iii])) break  ## No valid data
+        if (bTX[iii] <= pTX[iii]) break               ## The event is over
+        ww <- ww + 1 } } } ## Close the loop within the event and look for the next one    
+     HH[2,i,j,k] <- ww }
+
+## INDICATOR 3 - HWL (ANNUAL, TN > 22 & TX > 30, 3+ days, MAX DURATION) ###############
+    Tth <- c(22,30)  ## Temperature thresholds (TN set to 22°, TX set to 30°C) 
+    hwl <- 0  ## Initialize the counter (HWL days)
+    jj <- 1   ## Initialize the pointer
+
+    if ((avb[1] + avb[3]) == 2) {  ## Both TN and TX needed
+     HH[3,i,j,k] <- 0   ## Initialize the indicator
+     cTN <- c(XXY[1,i,j,30:31],XXX[1,i,j,1:ndy])  ## Bridge variable: TN 30 Dec (Y-1) to 31 Dec (Y)
+     cTX <- c(XXY[3,i,j,30:31],XXX[3,i,j,1:ndy])  ## Bridge variable: TX 30 Dec (Y-1) to 31 Dec (Y)         
+     for (ii in 1:ndy) {
+      if (ii < jj) next
+      if (k == 1 & ii <= 2) next  ## First year cannot have 2 days from previous year 
+      if (is.na(min(cTN[ii:(ii+2)])) | is.na(min(cTX[ii:(ii+2)]))) next
+      if (min(cTN[ii:(ii+2)]) > Tth[1] & min(cTX[ii:(ii+2)]) > Tth[2]) {
+       hwl <- 0  ## Re-initialize the counter
+       for (iii in ii:(ndy+2)) {  ## Inside the event (to 31.12, which is ndy + 2)
+        jj <- iii + 1
+        if (is.na(cTN[iii]) | is.na(cTX[iii])) break            ## No valid data
+        if ((cTN[iii] <= Tth[1]) | (cTX[iii] <= Tth[2])) break  ## The event is over
+        hwl <- hwl + 1 
+        if (hwl >= HH[3,i,j,k]) HH[3,i,j,k] <- hwl 
+        asd <- 0 } } } } ## Close Loop within the event and look for the next one    
+     
+## INDICATOR 4 - TXx (ANNUAL Max daily TX) ############################################
+    if (avb[3] == 1) HH[4,i,j,k] <- max(XXX[3,i,j,1:ndy],na.rm=TRUE)
+
+## INDICATOR 5 - TNx (ANNUAL Max daily TN) ############################################
+    if (avb[1] == 1) HH[5,i,j,k] <- max(XXX[1,i,j,1:ndy],na.rm=TRUE)
+
+## INDICATOR 6 - SU (ANNUAL, TX > 25) #################################################
+    if (avb[3] == 1) HH[6,i,j,k] <- length(XXX[3,i,j,1:ndy][is.finite(XXX[3,i,j,1:ndy]) &
+                                           XXX[3,i,j,1:ndy] > 25])
+
+## INDICATOR 7 - HD (ANNUAL, TX > 35) #################################################
+    if (avb[3] == 1) HH[7,i,j,k] <- length(XXX[3,i,j,1:ndy][is.finite(XXX[3,i,j,1:ndy]) &
+                                           XXX[3,i,j,1:ndy] > 35])
+
+## INDICATOR 8 - TR (ANNUAL, TN > 20) #################################################
+    if (avb[1] == 1) HH[8,i,j,k] <- length(XXX[1,i,j,1:ndy][is.finite(XXX[1,i,j,1:ndy]) & 
+                                           XXX[1,i,j,1:ndy] > 20])
+
+## INDICATOR 9 - TOTAL PRECIPITATION (ANNUAL) #########################################
+    if (avb[4] == 1) HH[9,i,j,k] <- sum(XXX[4,i,j,1:ndy],na.rm=TRUE)
+    
+## INDICATOR 10 - RRX1d (ANNUAL, Max daily RR) ########################################
+    if (avb[4] == 1) HH[10,i,j,k] <- max(XXX[4,i,j,1:ndy],na.rm=TRUE)
+
+## INDICATOR 11 - RRX5d (ANNUAL, Max consecutive 5-day cumulated RR) ################## 
+    ss <- 0  ## Initialize the pointer
+    if (avb[4] == 1) {  ## We need only RR
+     HH[11,i,j,k] <- 0  ## Initialize the indicator
+     for (kx in 5:ndy) {  ## Loop from day 5 
+      ss <- sum(XXX[4,i,j,kx:(kx-4)],na.rm=TRUE)                                      
+      if (is.finite(ss) & ss > HH[11,i,j,k]) HH[11,i,j,k] <- ss
+      asd <- 0 } }
+
+## INDICATOR 12 - RR1 (ANNUAL, Rainy days, RR >= 1 mm) ################################
+    if (avb[4] == 1) HH[12,i,j,k] <- length(XXX[4,i,j,1:ndy][is.finite(XXX[4,i,j,1:ndy]) &
+                                            XXX[4,i,j,1:ndy] >= 1])
+
+## INDICATOR 13 - RR10 (ANNUAL, Moderate rainy days, RR >= 10 mm) #####################
+    if (avb[4] == 1) HH[13,i,j,k] <- length(XXX[4,i,j,1:ndy][is.finite(XXX[4,i,j,1:ndy]) &
+                                            XXX[4,i,j,1:ndy] >= 10])
+
+## INDICATOR 14 - RR30 (ANNUAL, Heavy rainy days, RR >= 30 mm) ########################
+    if (avb[4] == 1) HH[14,i,j,k] <- length(XXX[4,i,j,1:ndy][is.finite(XXX[4,i,j,1:ndy]) &
+                                            XXX[4,i,j,1:ndy] >= 30])
+
+## INDICATOR 15 - CWetD (Max consec days in a year with RR >= 1) ######################
+    cw <- 0  ## Initialize the counter (CWetD)
+    jj <- 1  ## Initialize the pointer
+
+    if (avb[4] == 1) {  ## We need only RR
+     HH[15,i,j,k] <- 0  ## Initialize the indicator  
+     for (ii in 1:(ndy-1)) {
+      if (ii < jj) next
+      if (is.finite(XXX[4,i,j,ii]) & XXX[4,i,j,ii] >= 1) {
+       cw <- 0  ## Re-initialize the counter
+       for (iii in ii:ndy) {  ## Inside the event
+        jj <- iii + 1
+        if (XXX[4,i,j,iii] < 1 | is.na(XXX[4,i,j,iii])) break  ## One dry day and the streak is over
+        cw <- cw + 1 
+        if (cw >= HH[15,i,j,k]) HH[15,i,j,k] <- cw 
+        asd <- 0 } } } } 
+   
+## INDICATOR 16 - PET (Thornthwaite; ANNUAL) ##########################################
+    if ((avb[1] + avb[3]) == 2) HH[16,i,j,k] <- sum(HM[1,i,j,(mt-11):mt],na.rm=TRUE)
+
+## INDICATOR 17 - CDryD (Max consec days in a year with RR < 1) #######################
+    cd <- 0  ## Initialize the counter (CWetD)
+    jj <- 1  ## Initialize the pointer
+
+    if (avb[4] == 1) {  ## We need only RR
+     HH[17,i,j,k] <- 0  ## I nitialize the indicator  
+     for (ii in 1:(ndy-1)) {
+      if (ii < jj) next
+      if (is.finite(XXX[4,i,j,ii]) & XXX[4,i,j,ii] < 1) {
+       cd <- 0  ## Re-initialize the counter
+       for (iii in ii:ndy) {  ## Inside the event
+        jj <- iii + 1
+        if (XXX[4,i,j,iii] >= 1 | is.na(XXX[4,i,j,iii])) break  ## One wet day and the streak is over
+        cd <- cd + 1 
+        if (cd >= HH[17,i,j,k]) HH[17,i,j,k] <- cd 
+        asd <- 0 } } } } 
+
+## INDICATOR 19 - EWS98 (ANNUAL, 98th percentile of maixum daily wind speed) ##########
+    if (avb[6] == 1)  HH[19,i,j,k] <- quantile(XXX[6,i,j,1:ndy],0.98,na.rm=TRUE)  
+
+## INDICATOR 20 - FWI (Fire Weather Index, package cffdrs in R) #######################
+    if (sum(avb[3:6]) == 4) {  ## Complex indicator, we need TX, RR, RH, and WX
+ 
+# Input/output variables for cffrds package (initialize for 365 days, current year)
+     mon <- temp <- rh <- ws <- prec <- lat <- long <- day <- yr <- array(NA,c(ndy))  
+# Assign monthly labels to days (1-12)
+     for (zk in 1:ndy) {
+      mon[zk] <- 1 + floor(zk/30.417) }
+# Convert variables into vectors for fwi function (all needed)
+     lat[1:ndy]  <- kLAT[i,j]              ## Latitude
+     long[1:ndy] <- kLON[i,j]              ## Longitude
+     temp[1:ndy] <- XXX[3,i,j,1:ndy]       ## TX in °C
+     rh[1:ndy]   <- XXX[5,i,j,1:ndy]       ## RH in % (should be at noon)
+     ws[1:ndy]   <- XXX[6,i,j,1:ndy]*wspd  ## WX converted in km/h
+     prec[1:ndy] <- XXX[4,i,j,1:ndy]       ## RR in mm  
+     day[1:ndy]  <- c(1:ndy)               ## Day (optional)
+     yr[1:ndy]   <- YR[k]                  ## Year (optional)
+# This package does not like very small values who resemble negatives
+     ws[ws < 0] <- 0
+     rh[rh < 0] <- 0
+     prec[prec < 0] <- 0
+# And it does not like NA values (remember we ask 330 days to see the valid year)
+     temp[is.na(temp)] <-   0  ## NA is turned into a cold value
+     rh[is.na(rh)]     <-  99  ## NA is turned into a very humid value
+     ws[is.na(ws)]     <-   0  ## NA is turned into a no-wind day
+     prec[is.na(prec)] <-  10  ## NA is turned into a rainy day
+# Input dataframe for fwi function (vectors with 365 values)
+     df <- data.frame(lat,long,mon,temp,rh,ws,prec,day,yr)
+# We use the new reuploaded version of the cffrds packages
+# The output has 365 rows and 7 cols (FWI is in col 6)
+# Initial conditions as the standard ones (needed for day 1 only)
+     FW <- fwi(df,init=data.frame(ffmc=85,dmc=6,dc=15),batch=TRUE,out="fwi",lat.adjust=TRUE)
+# Number of days above the threshold decided in the first section (Check this carefully)
+     HH[20,i,j,k] <- length(FW[1:ndy,6][is.finite(FW[1:ndy,6]) & (FW[1:ndy,6] > fwc)]) }
+
+## INDICATOR 21 - CDDs (Annual sum, TM > 22 as base value) ############################
+    tb <- 22  ## TM threshold for CDDs (A double threshold for TN and TX may be used)
+    if ((avb[1] + avb[3]) == 2) {  ## We need only TM this time
+     HH[21,i,j,k] <- 0  ## Initialize the indicator
+     for (ccc in 1:ndy) {
+      if (is.na(XXX[2,i,j,ccc])) next
+      if (XXX[2,i,j,ccc] > tb) HH[21,i,j,k] <- HH[21,i,j,k] + XXX[2,i,j,ccc] - tb
+      asd <- 0 } } 
+
+## INDICATOR 22 - GDDs (Annual sum, TM > 22 as base value) ############################
+    tb <- 5  ## TM threshold for GDDs (Not crop-dependent)
+    if ((avb[1] + avb[3]) == 2) {  ## We need only TM this time
+     HH[22,i,j,k] <- 0  ## Initialize the indicator
+     for (ccc in 1:ndy) {
+      if (is.na(XXX[2,i,j,ccc])) next
+      if (XXX[2,i,j,ccc] > tb) HH[22,i,j,k] <- HH[22,i,j,k] + XXX[2,i,j,ccc] - tb
+      asd <- 0 } } 
+
+## INDICATOR 23 - GSL (Days between first to last (after July 1st) 6+ days TM > 5 #####
+    tb <- 5  ## TM threshold for GSL (Same used for GDDs)
+    gsi <- gsf <- 0  ## Initialize first and last day of the growing season
+    if ((avb[1] + avb[3]) == 2) {  ## We need only TM this time 
+     HH[23,i,j,k] <- 0  ## Initialize the indicator
+     for (ccc in 6:ndy) {
+      if (is.finite(min(XXX[2,i,j,ccc:(ccc-5)]))  &  min(XXX[2,i,j,ccc:(ccc-5)]) > tb) gsi <- ccc  ## Start
+      if (is.finite(min(XXX[2,i,j,ccc:(ccc-5)]))  &  min(XXX[2,i,j,ccc:(ccc-5)]) > tb) break       ## Break
+      asd <- 0 }
+     if (gsi > 0) {  ## If the GS started..
+      gsf <- ndy  ## We re-initialize the last day (it may not end)
+      ggk <- max(gsi,187)  ## We start looking for the end of the GS from July 1 or from day 1 of the GSL (if later)
+      for (ggg in ggk:ndy) {
+       if (is.finite(max(XXX[2,i,j,ggg:(ggg-5)]))  &  max(XXX[2,i,j,ggg:(ggg-5)]) <= tb) gsf <- ggg  ## End
+       if (is.finite(max(XXX[2,i,j,ggg:(ggg-5)]))  &  max(XXX[2,i,j,ggg:(ggg-5)]) <= tb) break       ## Break
+       asd <- 0 } }
+     if (min(gsi,gsf) > 0 & gsf > gsi) HH[23,i,j,k] <- gsf - gsi  ## It needs to start, but may not end (Dec 31 is used)
+     asd <- 0 }
+
+#######################################################################################
+### CLOSE THE CORE OF THE CORE [INDICATORS] ###########################################
+    asd <- 0 }} }  ## CLOSE SPATIAL LOOPS S2 [INDICATORS] AND CORE LOOP3 [YEARS]
+#######################################################################################
+# Clean before writing
+ if (db %in% c(2,4)) rm(FZ2)
+ if (db == 4) rm(kik)
+ if (avb[3] == 1) rm(bTX,pTX)
+ if ((avb[1] + avb[3]) == 2) rm(cTN,cTX)
+ if (sum(avb[3:6]) == 4) rm(mon,temp,rh,ws,prec,lat,long,df,FW)
+ rm(ATT,XXX,XXY,FZ,avb,LV,mt,ww,jj,Tth,hwl,ss,kx,cw,cd,tb,gsi,gsf)
+ gc()
+
+### WRITING PART 2 // INDICATORS ######################################################
+# Single files for each indicator and area (All years)
+ for (ind in 1:xe) {  ## Indicators
+  if (db %in% c(1,2,5) & ind %in% c(19,20)) next  ## No EWS98 and FWI for EOBS, EMO-1, and ERA5@2km
+  if (ind == 18) next                             ## Drought-related indicators are computed later
+  OutI  <- paste0(project,"_",EEa[db],"_",EEn[rr],"_",EEx[ind],"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],".nc")
+  OutVI <- ncvar_def(EEx[ind],EEv[ind],list(dim1,dim2,dim3y),NA,longname=EEx[ind],prec="float")
+  OutFI <- nc_create(OutI,list(OutVI,OutX,OutY,OutT))
+  ncvar_put(OutFI,OutX,round(kLON,3))  ## Lon as variable, not only dimension
+  ncvar_put(OutFI,OutY,round(kLAT,3))  ## Lat as variable, not only dimension
+  ncvar_put(OutFI,OutT,YR)             ## Years as variable, not only dimension
+  ncvar_put(OutFI,OutVI,round(HH[ind,,,],2))  ## Output variable (Indicators, all the years)
+  nc_close(OutFI) }
+
+# Clean before moving to the drought part
+ rm(ind,OutI,OutVI,OutFI)
+ gc() 
+
+#######################################################################################
+### 4.4 - DROUGHT-RELATED INDICATORS ##################################################
+#######################################################################################
+### COMPUTATION OF SPI AND SPEI #######################################################
+# Beware - We do not use special masks for arid and frozen lands 
+
+ for (s in 1:1) {  ## CORE LOOP L4 [DROUGHT INDICATOR]
+  for (sp in 1:1) {   ## CORE LOOP L4a [ACCUMULATION PERIOD]
+   print(c("Drought",rr,s,sp))  ## C3 - Third checkpoint on video
+   acc <- ap[sp]  ## Accumulation period
+# Bridge variables  
+   CWBx <- array(NA,c(kxy[1],kxy[2],nmt))  ## Climatic Water Balance
+   if (s == 1) CWBx <- HM[2,1:kxy[1],1:kxy[2],1:nmt]                                  ## RR (for SPI)
+#  if (s == 2) CWBx <- HM[2,1:kxy[1],1:kxy[2],1:nmt] - HM[1,1:kxy[1],1:kxy[2],1:nmt]  ## RR - PET (for SPEI)
+   SP <- array(NA,c(kxy[1],kxy[2],nmt))  ## SPI or SPEI (monthly values)
+
+# SPATIAL LOOPS S2 [ DROUGHT INDICATORS] ##############################################
+   for (i in 1:kxy[1]) {  ## Longitude
+    for (j in 1:kxy[2]) {  ## Latitude
+####### !! TEST 3 !! ############################
+     if (tst == 1 & (i != ttt[1] | j != ttt[2])) next
+####### !! TEST 3 !! ############################
+# Prepare the input quantities for package SPEI (CWB organized by months)
+     CWB   <- array(NA,c(nmt))
+     CWBin <- array(NA,c(nmt))
+     IND   <- array(NA,c(nmt))
+     for (sk in 1:nmt) {  ## Loop on months
+      CWB[sk] <- CWBx[i,j,sk] } 
+# The package SPEI plays its magic
+     CWBin <- ts(CWB[],freq=12,start=rst)
+     IND <- spei(CWBin,acc,ref.start=ri,ref.end=rf,na.rm=TRUE,distribution=distr[s],fit='ub-pwm',verbose=FALSE)
+     XXP <- as.vector(IND$fitted)
+     XXP[is.infinite(XXP)] <- NA  ## To avoid Inf values due to the shorter-then-needed underlying distribution
+     SP[i,j,1:nmt] <- XXP[1:nmt]
+
+## INDICATOR 18 - DR-SPI3 (Annual absolute sum of Spi3 <= -0.5) #######################
+     for (k in 1:nyr) {   ## Fast LOOP on Years
+      mi <- 1 + (k-1)*nm  ## January of each year
+      mf <- mi + 11       ## December of each year
+      HH[18,i,j,k] <- abs(sum(SP[i,j,mi:mf][SP[i,j,mi:mf] < -0.5 & is.finite(SP[i,j,mi:mf])])) } 
+     asd <- 0 }}  ## CLOSE SPATIAL LOOPS S3 [DROUGHT INDICATORS]
+
+# Clean before writing the drought outputs
+   rm(CWBx,CWB,CWBin,IND,XXP)
+   gc()
+
+### WRITING PART 3 // DROUGHT INDICATORS ##############################################
+# Single files for each indicator, accumulation period, area 
+# Drought indicators (monthly values for the entire period)
+   OutD  <- paste0(project,"_",EEa[db],"_",EEn[rr],"_",EEd[s],"_BSL_",bsl[1],"_",bsl[2],"_MM_",yif[1],"_",yif[2],".nc")
+   OutVD <- ncvar_def(EEd[s],EEdv[s],list(dim1,dim2,dim3m),NA,longname=EEd[s],prec="float")
+   OutFD <- nc_create(OutD,list(OutVD,OutX,OutY))
+   ncvar_put(OutFD,OutX,round(kLON,3))
+   ncvar_put(OutFD,OutY,round(kLAT,3)) 
+   ncvar_put(OutFD,OutVD,round(SP[,,],2))    ## Output variable (monthly values)
+   nc_close(OutFD)
+# Drought-related indicators (Annual values for the entire period)
+   OutS  <- paste0(project,"_",EEa[db],"_",EEn[rr],"_DR_",EEd[s],acc,"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],".nc")
+   OutVS <- ncvar_def(EEs[s],EEdv[s],list(dim1,dim2,dim3y),NA,longname=EEs[s],prec="float")
+   OutFS <- nc_create(OutS,list(OutVS,OutX,OutY,OutT))
+   ncvar_put(OutFS,OutX,round(kLON,3))
+   ncvar_put(OutFS,OutY,round(kLAT,3))
+   ncvar_put(OutFS,OutT,YR)  ## We include years as variable, not only as dimension              
+   ncvar_put(OutFS,OutVS,round(HH[18,,,],2))  ## Output variable (annual values)
+   nc_close(OutFS)
+
+# Clean and close double loop on accumulation period and type of drought indicator   
+   rm(OutD,OutVD,OutFD,OutS,OutVS,OutFS,SP,mi,mf)
+   gc() }}  ## CLOSE CORE LOOPS L4a [ACC PERIOD] and LOOP L4 [DROUGHT INDICATOR]
+
+#######################################################################################
+### CLOSE THE EXTERNAL LOOP ON AREA(S) ################################################
+ rm (spot,d,ic,jc,ki1,kj1,ki2,kj2,kxy,ttt,kLON,kLAT,dim1,dim2,OutX,OutY)
+ rm(HH,HM,HN,ki,s,sp)
+ gc() }  ## CLOSE CORE LOOP L1 [AREAS]
+
+#######################################################################################
+### CLEAN AND END THE RUN #############################################################
+if (dm == 2) rm(wdt)
+if (db == 5) rm(cnx,cny)
+rm(project,db,dm,ar,box,bsl,tst,cond,mw,ap,xe,dv,xp,EEn,nxy,res,lx,ly,ri,rf,yif,dmi,dmf)
+rm(nyr,nm,nmt,ndy,tdp,dim3y,dim3m,dim3d,conv,wspd,distr,wd,FF,var,EEa,EEx,EEv,EEp,OutT)
+rm(EEpv,EEd,EEdv,LON,LAT,FX,rr,ari,arf,ccx,ccy,YR,fwc,stepy)
+gc()
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+## Music Credits - Jethro Tull (Thick as a Brick) #####################################
+##               - Cesare Cremonini (Alaska Baby) #####################################
+##               - Dream Theater (Quarantième Live a Paris) ###########################
+##               - Genesis (Foxtrot) ##################################################
+##               - Genesis (Nursery crime) ############################################
+#######################################################################################
+#######################################################################################
+#######################################################################################
