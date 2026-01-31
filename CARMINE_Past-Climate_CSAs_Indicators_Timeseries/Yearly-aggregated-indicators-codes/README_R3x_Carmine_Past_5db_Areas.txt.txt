@@ -7,7 +7,6 @@ README – How to Run the R Script
 Requirements
 ------------
 - R (version 4.0 or newer recommended)
-- Windows operating system
 - Sufficient RAM (the script can be memory intensive)
 
 Required R packages:
