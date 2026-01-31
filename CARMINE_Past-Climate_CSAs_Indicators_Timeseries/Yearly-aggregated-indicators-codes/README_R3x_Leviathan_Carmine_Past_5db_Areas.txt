@@ -1,5 +1,5 @@
 Within this directory the code used to obtain yearly aggregated timeseries over the past (milestone 4 - MS4; Table 1) are included.
-The code R3x_Carmine_Past_5db_Areas.txt is a R-code content. Please copy and paste on R for usage.
+The code R3x_Leviathan_Carmine_Past_5db_Areas.txt is a R-code content. Please copy and paste on R for usage.
 Author - Jonathan Spinoni (CMCC)
 -----------------------------------------------------------------------------------------------------------------------------------
 README – How to Run the R Script
