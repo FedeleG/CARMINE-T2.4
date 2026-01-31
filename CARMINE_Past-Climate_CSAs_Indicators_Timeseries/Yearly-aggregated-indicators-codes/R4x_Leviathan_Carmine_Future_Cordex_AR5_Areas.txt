@@ -22,9 +22,9 @@ require(cffdrs)  ## To compute FWI
 ### 1.1 - DECISIONS ###################################################################
 #######################################################################################
 project <- "CARMINE"  ## Name of the project (Special version with 8 input subset files)
-md  <- c( 1,13)  ## How many models? // Change it if you want to run in parallel
-sc  <- c( 1, 3)  ## How many scenarios? // rcp26, rcp45, rcp85 in the CMIP5 set-up
-ar  <- c( 1, 8)  ## How many areas?
+md  <- c(1,13)  ## How many models? // Change it if you want to run in parallel
+sc  <- c(1, 3)  ## How many scenarios? // rcp26, rcp45, rcp85 in the CMIP5 set-up
+ar  <- c(1, 8)  ## How many areas?
 bsl <- c(1991,2020)  ## REFERENCE PERIOD: choose the baseline (bsli starting year, bslf ending year)
 tst <- 0     ## TEST // One grid point (1 is on, 0 is off)
 if (tst == 1) ar[2] <- md[2] <- sc[2] <- 2
@@ -170,7 +170,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 #######################################################################################
 ### EXTERNAL CORE LOOP 2 - MODELS [13 GCMs-RCMs] ######################################
  for (mm in md[1]:md[2]) {  ## CORE LOOP L2 [MODELS]
-  print(c("Model",mm))  ## Second checkpoint on video
+  print(c(rr,"Model",mm))  ## Second checkpoint on video
 
 #######################################################################################
 ### 3.2 - PERCENTILES #################################################################
@@ -182,7 +182,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
   ppf <- 1       ## Only one output in this case
 
 ### CORE CALCULATION OF PERCENTILES ###################################################
-  print("Percentiles")  ## Third checkpoint on video
+  print(c(rr,"Percentiles"))  ## Third checkpoint on video
   for (pp in 1:ppf) {  ## LOOP ON PERCENTILES
 # Read from the input file (in this case we read 30yrs from a single file as the boxes are small)
    FP <-  paste0(EEn[rr],"_",var[ptr[pp]],"_cordex_model",mdc[mm],"_",scn[2],".nc") 
@@ -219,7 +219,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 #######################################################################################
 ### EXTERNAL CORE LOOP 3 - SCENARIOS [3 RCPs] #########################################
   for (ss in sc[1]:sc[2]) {  ## CORE LOOP L3 [SCENARIOS]
-   print(c("Scenario",ss))  ## Fourth checkpoint on video
+   print(c(rr,"Scenario",ss))  ## Fourth checkpoint on video
 #######################################################################################
 ### 3.3 - INDICATORS (EXCEPT DROUGHT) #################################################
 #######################################################################################
@@ -237,7 +237,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 # We loop over the variables [TN (°C), TM (°C), TX (°C), RR (mm), RH (%), WX (m/s)]
    for (vv in 1:dv) {  ## CORE LOOP [VARIABLES] 
     if (vv == 2) next  ## We don't read TM for Cordex
-    if (mm %in% c(3,10,12) & (vv == 5)) next  ## No hurs for these models 
+    if (mm %in% c(3,10) & (vv == 5)) next  ## No hurs for these models 
     FK <- paste0(EEn[rr],"_",var[vv],"_cordex_model",mdc[mm],"_",scn[ss],".nc")       
     FZ <- nc_open(FK)
 # How long is the data period?
@@ -253,11 +253,10 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 
 #######################################################################################
 ### INTERNAL CORE LOOP 4 - YEARS [1971-2100] ##########################################
-   print("Indicators")  ## Fifth checkpoint on video
+   print(c(rr,"Indicators"))  ## Fifth checkpoint on video
    for (k in 1:nyr) {  ## CORE LOOP L4 (YEARS)
     YR[k] <- yif[1]+k-1  ## Year A.D. 
-    print(YR[k]) 
-    
+    print(YR[k])  ## To avoid video idle
 ### SPATIAL LOOPS S2 [INDICATORS] #####################################################
     for (i in 1:nxy[1]) {  ## Lon
      for (j in 1:nxy[2]) {  ## Lat 
@@ -424,7 +423,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
       if (avb[6] == 1)  HH[19,i,j,k] <- quantile(XXX[6,i,j,ki:kf],0.98,na.rm=TRUE)  
 
 ## INDICATOR 20 - FWI (Fire Weather Index, package cffdrs in R) #######################
-# Beware - Some days in Model 13 can be problematic after 2095)
+# Beware - Some days in Model 13 can be problematic after 2095
       if (sum(avb[3:6]) == 4) {  ## Complex indicator, we need TX, RR, RH, and WX
  
 # Input/output variables for cffrds package (initialize for 365 days, current year)
@@ -442,14 +441,14 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
        day[1:ndy]  <- c(1:ndy)               ## Day (optional)
        yr[1:ndy]   <- YR[k]                  ## Year (optional)
 # This package does not like very small values who resemble negatives
-       ws[ws < 0] <- 0
-       rh[rh < 0] <- 0
-       prec[prec < 0] <- 0
+       ws[ws < 0] <- 1
+       rh[rh < 0] <- 1
+       prec[prec < 0] <- 0.1
 # And it does not like NA values (remember we ask 330 days to see the valid year)
-       temp[is.na(temp)] <-   0  ## NA is turned into a cold value
-       rh[is.na(rh)]     <-  99  ## NA is turned into a very humid value
-       ws[is.na(ws)]     <-   0  ## NA is turned into a no-wind day
-       prec[is.na(prec)] <-  10  ## NA is turned into a rainy day
+       temp[is.na(temp)] <-  1  ## NA is turned into a cold value
+       rh[is.na(rh)]     <- 90  ## NA is turned into a very humid value
+       ws[is.na(ws)]     <-  1  ## NA is turned into a no-wind day
+       prec[is.na(prec)] <- 10  ## NA is turned into a rainy day
 # Input dataframe for fwi function (vectors with 365 values)
        df <- data.frame(lat,long,mon,temp,rh,ws,prec,day,yr)
 # We use the new reuploaded version of the cffrds packages
@@ -514,7 +513,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 # Single files for each indicator and area (All years)
    for (ind in 1:xe) {  ## Indicators
     if (ind == 18) next  ## Drought-related indicators are computed later
-    OutI  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_",EEx[ind],"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],".nc")
+    OutI  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_",EEx[ind],"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],"_",scn[ss],".nc")
     OutVI <- ncvar_def(EEx[ind],EEv[ind],list(dim1,dim2,dim3y),NA,longname=EEx[ind],prec="float")
     OutFI <- nc_create(OutI,list(OutVI,OutX,OutY,OutT))
     ncvar_put(OutFI,OutX,round(LON,3))  ## Lon as variable, not only dimension
@@ -532,7 +531,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 #######################################################################################
 ### COMPUTATION OF SPI AND SPEI #######################################################
 # Beware - We do not use special masks for arid and frozen lands 
-   print("Drought")  ## Sixth checkpoint on video
+   print(c(rr,"Drought"))  ## Sixth checkpoint on video
 #######################################################################################
 ### INTERNAL CORE LOOPS 5a-5b - DROUGHT INDICATOR AND ACCUMULATION PERIOD #############
    for (s in 1:1) {  ## CORE INTERNAL LOOP 5a [DROUGHT INDICATOR]
@@ -577,7 +576,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 ### WRITING PART 3 // DROUGHT INDICATORS ##############################################
 # Single files for each indicator, accumulation period, area 
 # Drought indicators (monthly values for the entire period)
-     OutD  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_",EEd[s],"_BSL_",bsl[1],"_",bsl[2],"_MM_",yif[1],"_",yif[2],".nc")
+     OutD  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_",EEd[s],"_BSL_",bsl[1],"_",bsl[2],"_MM_",yif[1],"_",yif[2],"_",scn[ss],".nc")
      OutVD <- ncvar_def(EEd[s],EEdv[s],list(dim1,dim2,dim3m),NA,longname=EEd[s],prec="float")
      OutFD <- nc_create(OutD,list(OutVD,OutX,OutY))
      ncvar_put(OutFD,OutX,round(LON,3))
@@ -585,7 +584,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
      ncvar_put(OutFD,OutVD,round(SP[,,],2))    ## Output variable (monthly values)
      nc_close(OutFD)
 # Drought-related indicators (Annual values for the entire period)
-     OutS  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_DR_",EEd[s],acc,"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],".nc")
+     OutS  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_DR_",EEd[s],acc,"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],"_",scn[ss],".nc")
      OutVS <- ncvar_def(EEs[s],EEdv[s],list(dim1,dim2,dim3y),NA,longname=EEs[s],prec="float")
      OutFS <- nc_create(OutS,list(OutVS,OutX,OutY,OutT))
      ncvar_put(OutFS,OutX,round(LON,3))
@@ -618,7 +617,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 
 ### FINAL 5x-LOOP FOR THE ENSEMBLE OUTPUTS ############################################
 # For all the indicators we need: ensemble mean, ensemble median & stdev (over the models)
- print("Ensemble")  ## Seventh checkpoint on video
+ print(c(rr,"Ensemble"))  ## Seventh checkpoint on video
  for (ind in 1:xe) { 
   for (ss in sc[1]:sc[2]) {
    for (i in 1:nxy[1]) {
