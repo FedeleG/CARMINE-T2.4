@@ -1,0 +1,1 @@
+CORDEX indicators and statistics files developed with code "R4x_Leviathan_Carmine_Future_Cordex_AR5_Areas.txt" are uploaded and accessible on the Zenodo repository: "https://zenodo.org/records/18454954" due to storage limits on Github.
