@@ -1,6 +1,8 @@
 Within this directory the R codes used to compute yearly aggregated climate indicator time series for EURO-CORDEX ensemble members are included.
 The analyses refer to past and future periods (milestone 4 – MS4; Table 1).
 
+CORDEX indicators and statistics files developed with code "R4x_Leviathan_Carmine_Future_Cordex_AR5_Areas.txt" are uploaded and accessible on the Zenodo repository: "https://zenodo.org/records/18454954" due to storage limits on Github.
+
 The file R4x_Leviathan_Carmine_Future_Cordex_AR5_Areas.txt contain R-code content. Please copy and paste the code into R for usage.
 
 Author – Jonathan Spinoni (CMCC)
