@@ -22,11 +22,11 @@ require(cffdrs)  ## To compute FWI
 ### 1.1 - DECISIONS ###################################################################
 #######################################################################################
 project <- "CARMINE"  ## Name of the project
-db  <- 1  ## DATABASE (1 EOBS, 2 EMO, 3 CERRA, 4 ERA5, 5 ERA2km)
+db  <- 5  ## DATABASE (1 EOBS, 2 EMO, 3 CERRA, 4 ERA5, 5 ERA2km)
 dm  <- 2  ## DOMAIN (1 for the entire grid - db 5 excluded; 2 for selected areas)
 ar  <- 8  ## How many areas?
 if (dm == 1) ari <- arf <- 1  ## Entire grid (1 area only)
-if (dm == 2) ari <- 1   ## Change if you want to run in parallel (first area to run)
+if (dm == 2) ari <- 7   ## Change if you want to run in parallel (first area to run)
 if (dm == 2) arf <- 8  ## Change if you want to run in parallel (last area to run)
 box <- 1  ## Box in case we select specific areas (centroid +/- deg)
 bsl <- c(1991,2020)  ## REFERENCE PERIOD: choose the baseline (bsli starting year, bslf ending year)
@@ -774,7 +774,7 @@ for (rr in ari:arf) {  ## CORE LOOP L1 [AREAS]
 #  if (s == 2) CWBx <- HM[2,1:kxy[1],1:kxy[2],1:nmt] - HM[1,1:kxy[1],1:kxy[2],1:nmt]  ## RR - PET (for SPEI)
    SP <- array(NA,c(kxy[1],kxy[2],nmt))  ## SPI or SPEI (monthly values)
 
-# SPATIAL LOOPS S2 [ DROUGHT INDICATORS] ##############################################
+# SPATIAL LOOPS S3 [ DROUGHT INDICATORS] ##############################################
    for (i in 1:kxy[1]) {  ## Longitude
     for (j in 1:kxy[2]) {  ## Latitude
 ####### !! TEST 3 !! ############################
@@ -815,7 +815,7 @@ for (rr in ari:arf) {  ## CORE LOOP L1 [AREAS]
    ncvar_put(OutFD,OutVD,round(SP[,,],2))    ## Output variable (monthly values)
    nc_close(OutFD)
 # Drought-related indicators (Annual values for the entire period)
-   OutS  <- paste0(project,"_",EEa[db],"_",EEn[rr],"_DR_",EEd[s],acc,"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],".nc")
+   OutS  <- paste0(project,"_",EEa[db],"_",EEn[rr],"_DR_",EEd[s],"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],".nc")
    OutVS <- ncvar_def(EEs[s],EEdv[s],list(dim1,dim2,dim3y),NA,longname=EEs[s],prec="float")
    OutFS <- nc_create(OutS,list(OutVS,OutX,OutY,OutT))
    ncvar_put(OutFS,OutX,round(kLON,3))
@@ -827,6 +827,8 @@ for (rr in ari:arf) {  ## CORE LOOP L1 [AREAS]
 # Clean and close double loop on accumulation period and type of drought indicator   
    rm(OutD,OutVD,OutFD,OutS,OutVS,OutFS,SP,mi,mf)
    gc() }}  ## CLOSE CORE LOOPS L4a [ACC PERIOD] and LOOP L4 [DROUGHT INDICATOR]
+# WARNING - In case of multiple drought indicators and accumulation periods, HH needs more than one slot
+#           In this case, we need to write it outside of the loops on drought indicators
 
 #######################################################################################
 ### CLOSE THE EXTERNAL LOOP ON AREA(S) ################################################

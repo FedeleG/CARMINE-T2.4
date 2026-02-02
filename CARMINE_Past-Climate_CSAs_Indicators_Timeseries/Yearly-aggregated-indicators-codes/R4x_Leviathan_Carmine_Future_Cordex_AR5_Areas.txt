@@ -237,7 +237,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 # We loop over the variables [TN (°C), TM (°C), TX (°C), RR (mm), RH (%), WX (m/s)]
    for (vv in 1:dv) {  ## CORE LOOP [VARIABLES] 
     if (vv == 2) next  ## We don't read TM for Cordex
-    if (mm %in% c(3,10) & (vv == 5)) next  ## No hurs for these models 
+    if (mm %in% c(3,10,12) & (vv == 5)) next  ## No hurs for these models 
     FK <- paste0(EEn[rr],"_",var[vv],"_cordex_model",mdc[mm],"_",scn[ss],".nc")       
     FZ <- nc_open(FK)
 # How long is the data period?
@@ -513,6 +513,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 # Single files for each indicator and area (All years)
    for (ind in 1:xe) {  ## Indicators
     if (ind == 18) next  ## Drought-related indicators are computed later
+    if (mm %in% c(3,10,12) & (ind == 20)) next  ## No hurs, so no FWI for these models
     OutI  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_",EEx[ind],"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],"_",scn[ss],".nc")
     OutVI <- ncvar_def(EEx[ind],EEv[ind],list(dim1,dim2,dim3y),NA,longname=EEx[ind],prec="float")
     OutFI <- nc_create(OutI,list(OutVI,OutX,OutY,OutT))
@@ -584,7 +585,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
      ncvar_put(OutFD,OutVD,round(SP[,,],2))    ## Output variable (monthly values)
      nc_close(OutFD)
 # Drought-related indicators (Annual values for the entire period)
-     OutS  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_DR_",EEd[s],acc,"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],"_",scn[ss],".nc")
+     OutS  <- paste0(project,"_",EEa,"_",EEn[rr],"_mod",mdc[mm],"_DR_",EEd[s],"_BSL_",bsl[1],"_",bsl[2],"_YY_",yif[1],"_",yif[2],"_",scn[ss],".nc")
      OutVS <- ncvar_def(EEs[s],EEdv[s],list(dim1,dim2,dim3y),NA,longname=EEs[s],prec="float")
      OutFS <- nc_create(OutS,list(OutVS,OutX,OutY,OutT))
      ncvar_put(OutFS,OutX,round(LON,3))
@@ -648,7 +649,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 
 #######################################################################################
 ### CLOSE THE EXTERNAL LOOP ON AREA(S) ################################################
- rm(OutFE,OutX,OutY,OutVE1,OutVE2,OutVE3,LON,LAT,ZZ,QQ,dim1,dim2,ttt,FX)
+ rm(OutFE,OutX,OutY,OutVE1,OutVE2,OutVE3,LON,LAT,ZZ,QQ,dim1,dim2,ttt,FX,OutE)
  gc() }  ## CLOSE CORE EXTERNAL LOOP 1 [AREAS]
 
 #######################################################################################
@@ -657,7 +658,7 @@ for (rr in ar[1]:ar[2]) {  ## CORE LOOP L1 [AREAS]
 ### CLEAN AND END THE RUN #############################################################
 rm(project,ar,bsl,tst,mw,ap,xe,dv,xp,EEn,nxy,lx,ly,ri,rf,yif,dmi,dmf)
 rm(nyr,nm,nmt,ndy,tdp,dim3y,dim3m,dim3d,dim0i,dim0s,conv,wspd,distr,FF,var,EEa,EEx,EEv,EEp)
-rm(EEpv,EEd,EEdv,rr,ccx,ccy,YR,fwc,OutT)
+rm(EEpv,EEd,EEdv,rr,ccx,ccy,YR,fwc,OutT,md,sc,nxx,nyy)
 gc()
 
 #######################################################################################
