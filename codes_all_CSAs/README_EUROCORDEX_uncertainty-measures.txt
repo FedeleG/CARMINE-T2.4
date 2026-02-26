@@ -5,7 +5,7 @@
 
 ## Requirements
 
-carmine environment available in this repository "carmine_env_yml"
+carmine environment available in this repository "carmine_env.yml"
 
 Install via conda:
 
@@ -75,7 +75,7 @@ https://zenodo.org/records/18454954
 
 ---
 
-## Download Instructions
+## Data Access Instructions
 
 Download the full dataset archive from Zenodo.
 
@@ -83,7 +83,7 @@ Unzip the archive locally.
 
 Ensure the extracted folder is named:
 
-Cordex_Carmine
+"Cordex_Carmine"
 
 Place the folder in a location accessible from your local Python environment.
 
