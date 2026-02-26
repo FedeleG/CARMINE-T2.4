@@ -60,7 +60,7 @@ The scripts work along the predefined internal CARMINE Windows and generate outp
 Label	Years
 near	1981–2010
 near2	1991–2020
-mid	2021–2050
+mid     2021–2050
 mid2	2036–2065
 late	2071–2100
 full	1971–2100
