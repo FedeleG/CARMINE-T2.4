@@ -117,15 +117,7 @@ Script Configuration:
 folderlocation = Path(r"set path to your location of Cordex_Carmine")
 ROOT = folderlocation / "Cordex_Carmine"
 
-Example (Windows):
-
-folderlocation = Path(r"C:\Users\username\Data")
-ROOT = folderlocation / "Cordex_Carmine"
-
-#####################################################
-################## Data Size ########################
-#####################################################
-
+## Data Size
 
 The dataset contains:
 7 CSAs
