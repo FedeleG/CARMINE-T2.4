@@ -1,0 +1,31 @@
+# 1. TM (Mean Temperature)
+# 2. WSDI (Warm Spell Duration Index:  Number of days with TX > 90percentile for 6+ consecutive days)
+# 3. HWL (Heatwave Length; Maximum consecutive number of (3+) days  with TN > 22°C and TX > 30°C)
+# 4. TXx (Annual Maximum of daily TX)
+# 5. TNx (Annual Maximum of daily TN)
+# 6. SU (Summer Days; Days with TX > 25°C)
+# 7. HD (Hot Days; Days with TX > 35°C)
+# 8. TR (Tropical Nights; Days with TN > 20°C)
+## Extreme Precipitation (Annual outputs)
+# 9. PTOT (Total Annual Precipitation)
+# 10. RRx1d (Annual maximum 1-day precipitation)
+# 11. RRx5d (Annual maximum 5-day cumulated precipitation)
+# 12. RR1 (Number of rainy days; RR >= 1 mm)
+# 13. RR10 (Number of days with modeate rain; RR >= 10 mm)
+# 14. RR30 (Number of days with heavy rain; RR >= 30 mm)
+# 15. CWD (Consecutive Wet Days - Maximum annual values of consecutive days with RR >= 1 mm)
+## Meteorological Droughts
+# 16. PETth (Potential EvapoTranspiration with Thornthwaite's Method, annual average)
+# 17. CDryD (Consecutive Dry Days - Maximum annual values of consecutive days with RR < 1 mm)
+# 18. DR_SPI-3 (Annual sum, in abs values, of SPI-3 values <= -0.5) // See Section 5
+[Typo in the description included in the code, SPEI instead of SPI, but computations are fine]
+## Windstorms
+# 19. EWS98 (98th percentile of daily maximum wind speed, one value for each year)
+## Fires
+# 20. FWI (Fire Weather Index; Number of days with High or Extreme Fire Danger, FWI > 21)
+## Energy Meteorology
+# 21. CDDs (Cooling Degree Days; Annual sum of difference TM - 22°C, if TM > 22°C)
+## Agrometeorology
+# 22. GDDs (Growing Degree Days; Annual sum of difference TM - 5°C, if TM > 5°C) )
+# 23. GSL (Growing Season Length; Days from first 6 consecutive days with TM > 5°C and
+                   first six consecutive days with TM <= 5°C after July 1)
